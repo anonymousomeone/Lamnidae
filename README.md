@@ -1,0 +1,2 @@
+# pixelplaceio-bot
+cope
