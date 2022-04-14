@@ -1,6 +1,7 @@
-var WebSocketClient = require('websocket').client;
+const WebSocketClient = require('websocket').client;
+const { zzzr } = require('./config.json');
 
-var client = new WebSocketClient();
+const client = new WebSocketClient();
 
 client.on('connectFailed', function(error) {
     console.log('Connect Error: ' + error.toString());
@@ -17,6 +18,7 @@ client.on('connect', function(connection) {
     connection.on('message', function(message) {
         if (message.type === 'utf8') {
             console.log("Received: '" + message.utf8Data + "'");
+            console.log(parseMessage(message.utf8Data))
         }
     });
 });
@@ -27,6 +29,25 @@ const opts = {
         upgrade: "websocket",
         origin: "https://pixelplace.io",
 }
-const usragent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.88 Safari/537.36"
 
-client.connect('wss://pixelplace.io/socket.io/?EIO=3&transport=websocket', 'echo-protocol', null, opts, opts);
+client.connect('wss://pixelplace.io/socket.io/?EIO=3&transport=websocket', 'echo-protocol', null, opts);
+
+function buildAuth(userJson) {
+    var json = {
+        "authId": userJson.authId,
+        "authKey": userJson.authKey,
+        "authToken": userJson.authToken
+    }
+    return `42["init", {"authId":${userJson.authId},"authKey": ${userJson.authKey},"authToken": ${userJson.authToken}}]`
+}
+
+function parseMessage(msg) {
+    var type = ""
+    for (char of msg) {
+        // console.log(char)
+        if (typeof (parseInt(char)) == "number" && parseInt(char).length != 0) {
+            type += char
+        }
+    }
+    console.log(type)
+}
