@@ -1,5 +1,5 @@
 const WebSocketClient = require('websocket').client;
-const { zzzr } = require('./config.json');
+const { Akdsnadsdsa } = require('./config.json');
 
 const client = new WebSocketClient();
 
@@ -17,8 +17,24 @@ client.on('connect', function(connection) {
     });
     connection.on('message', function(message) {
         if (message.type === 'utf8') {
-            console.log("Received: '" + message.utf8Data + "'");
-            console.log(parseMessage(message.utf8Data))
+            var parsed = parseMessage(message.utf8Data)
+            if (parsed.type != 'p') {
+                console.log(`Recieved: ${parsed.id}, ${parsed.type}, ${parsed.msg}`);
+                console.log(parsed.msg)
+            }
+
+            if (parsed.id == '42') {
+                connection.send(place({x: , y:}))
+            }
+
+            if (parsed.id == '40') {
+                console.log('Authenticating')
+                console.log(buildAuth(Akdsnadsdsa))
+                connection.sendUTF(buildAuth(Akdsnadsdsa))
+
+                // keepalive
+                setInterval(() => {connection.send('2')}, 26000)
+            }
         }
     });
 });
@@ -33,21 +49,25 @@ const opts = {
 client.connect('wss://pixelplace.io/socket.io/?EIO=3&transport=websocket', 'echo-protocol', null, opts);
 
 function buildAuth(userJson) {
-    var json = {
-        "authId": userJson.authId,
-        "authKey": userJson.authKey,
-        "authToken": userJson.authToken
+    return `42["init",{"authId":"${userJson.authId}","authKey":"${userJson.authKey}","authToken":"${userJson.authToken}","boardId":${userJson.boardId}}]`
     }
-    return `42["init", {"authId":${userJson.authId},"authKey": ${userJson.authKey},"authToken": ${userJson.authToken}}]`
-}
 
 function parseMessage(msg) {
-    var type = ""
-    for (char of msg) {
-        // console.log(char)
-        if (typeof (parseInt(char)) == "number" && parseInt(char).length != 0) {
-            type += char
-        }
+    var id = ""
+    for (var i = 0; i < msg.length; i++) {
+        var char = msg[i]
+        // console.log(parseInt(char))
+        if (parseInt(char).toString() == 'NaN') break
+        id += char
     }
-    console.log(type)
+    if (msg.length >= 3) var message = JSON.parse(msg.slice(id.length));
+    if (id == '42') {
+        var type = message[0]
+        message = message[1]
+    }
+    return { id: id, type: type, msg: message }
+}
+
+function place(location, color) {
+    return `42["p",[${location.x},${location.y},${color},1]]`
 }
