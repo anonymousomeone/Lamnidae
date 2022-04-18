@@ -23,17 +23,15 @@ client.on('connect', function(connection) {
                 console.log(parsed.msg)
             }
 
-            if (parsed.id == '42') {
-                connection.send(place({x: , y:}))
-            }
-
+            // console.log(place({x: 1938, y:1536}, 15))
             if (parsed.id == '40') {
                 console.log('Authenticating')
-                console.log(buildAuth(Akdsnadsdsa))
+                // console.log(buildAuth(Akdsnadsdsa))
                 connection.sendUTF(buildAuth(Akdsnadsdsa))
 
                 // keepalive
                 setInterval(() => {connection.send('2')}, 26000)
+                setInterval(() => {connection.send(place(1938, 1536, 13))}, 1000)
             }
         }
     });
@@ -68,6 +66,6 @@ function parseMessage(msg) {
     return { id: id, type: type, msg: message }
 }
 
-function place(location, color) {
-    return `42["p",[${location.x},${location.y},${color},1]]`
+function place(x, y, color) {
+    return `42["p",[${x},${y},${color},1]]`
 }
