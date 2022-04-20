@@ -1,9 +1,8 @@
 const WebSocketClient = require('websocket').client;
 const Jimp = require('jimp')
-const { zzzr, colors, cdict } = require('./config.json');
+const { colors, cdict } = require('./config.json');
+const { users } = require('./token.json')
 const EventEmitter = require('events');
-
-const client = new WebSocketClient();
 
 class TaskManager extends EventEmitter {
     constructor() {
@@ -23,12 +22,13 @@ class TaskManager extends EventEmitter {
                 this.tasks.push(place(x + a, y + b, c))
             }
         }
+        this.emit('update')
     }
     
     drawImage(img, x, y) {
         console.log('converting image')
         Jimp.read(img, async (err, image) => {
-            var that = this
+            var arr = []
             await image.scan(0, 0, image.bitmap.width, image.bitmap.height, function(x2, y2, idx) {
                
                 var red = this.bitmap.data[idx + 0];
@@ -39,31 +39,39 @@ class TaskManager extends EventEmitter {
                 var keys = Object.keys(cdict)
                 for (var i = 0; i < keys.length; i++) {
                     if (keys[i] == rgb.join(', ')) {
-                        that.tasks.push(place(x2 + x, y2 + y, i))
+                        arr.push(place(x2 + x, y2 + y, i))
                     }
                 }
             });
+            // make a local array so we can do operations like randomize pixel placements without modifying the task queue
+            this.tasks.push(...arr)
             console.log('done')
-            this.emit('parsed')
+            this.emit('update')
         })
     }
     
 }
 
 class Bot {
-    constructor(connection) {
+    constructor(connection, id) {
         this.connection = connection
+        this.id = id
     }
     init() {
-        task.on('parsed', async () => {
-            await sleep(1000)
+        task.on('update', async () => {
             console.log('drawing')
-            console.log(task.tasks)
-            for (var i = 0; i < task.tasks.length; i++) {
-                await sleep (150)
+            var len = task.tasks.length
+            for (var i = 0; i < len; i++) {
+                await sleep (170)
+                console.log(`${this.id}: ${task.tasks[0]}`)
                 this.connection.sendUTF(task.tasks[0])
-                console.log(`Placing ${task.tasks[0]}`)
                 task.tasks.shift()
+            }
+        })
+        this.connection.on('message', (msg) => {
+            var parsed = parseMessage(msg)
+            if (parsed.type == 'p' || parsed.type == 'throw.error') {
+                console.log(`Recieved: ${parsed.id}, ${parsed.type}, ${parsed.msg}`)
             }
         })
     }
@@ -71,61 +79,80 @@ class Bot {
 
 const task = new TaskManager()
 
-// task.drawRect(0, 0, 10, 10, 13)
 // console.log(task.tasks)
 
-client.on('connectFailed', function(error) {
-    console.log('Connect Error: ' + error.toString());
-});
 
-client.on('connect', function(connection) {
-    console.log('WebSocket Client Connected');
-    connection.on('error', function(error) {
-        console.log("Connection Error: " + error.toString());
-    });
-    connection.on('close', function() {
-        console.log('echo-protocol Connection Closed');
-    });
-    connection.on('message', async function(message) {
-        if (message.type === 'utf8') {
-            var parsed = parseMessage(message.utf8Data)
-            if (parsed.type != 'p' && parsed.type != 'chat.user.message' && parsed.type != 'l' && parsed.type != 'j') {
-                console.log(`Recieved: ${parsed.id}, ${parsed.type}, ${parsed.msg}`);
-                console.log(parsed.msg)
-            }
+class Client {
+    constructor(userJson, id) {
+        this.userJson = userJson
+        this.id = id
+    }
+    init() {
+        var client = new WebSocketClient()
+        var that = this
 
-            // console.log(place({x: 1938, y:1536}, 15))
-            if (parsed.id == '40') {
-                console.log('Authenticating')
-                // console.log(buildAuth(Akdsnadsdsa))
-                connection.sendUTF(buildAuth(zzzr))
-
-                // keepalive
-                setInterval(() => {connection.send('2')}, 26000)
-
-                const bot = new Bot(connection)
-                bot.init()
-
-                task.drawImage('test.jpg', 2800, 0)
-            }
+        client.on('connectFailed', function(error) {
+            console.log('Connect Error: ' + error.toString());
+        });
+        client.on('connect', function(connection) {
+            console.log('WebSocket Client Connected');
+            connection.on('error', function(error) {
+                console.log("Connection Error: " + error.toString());
+            });
+            connection.on('close', function() {
+                console.log('echo-protocol Connection Closed');
+            });
+            connection.on('message', async function(message) {
+                if (message.type === 'utf8') {
+                    var parsed = parseMessage(message.utf8Data)
+                    // if (parsed.type != 'p' && parsed.type != 'chat.user.message' && parsed.type != 'l' && parsed.type != 'j') {
+                    //     console.log(`Recieved: ${parsed.id}, ${parsed.type}, ${parsed.msg}`);
+                    //     console.log(parsed.msg)
+                    // }
+        
+                    // console.log(place({x: 1938, y:1536}, 15))
+                    if (parsed.id == '40') {
+                        console.log('Authenticating')
+                        // console.log(buildAuth(Akdsnadsdsa))
+                        connection.sendUTF(buildAuth(that.userJson))
+        
+                        // keepalive
+                        setInterval(() => {connection.send('2')}, 26000)
+                        
+                        const bot = new Bot(connection, that.id)
+                        bot.init()
+                        
+                        // task.drawImage('test.png', 0, 0)
+                        task.drawRect(120, 120, 10, 10, 15)
+                    }
+                }
+            });
+        });
+        
+        const opts = {
+            host: "pixelplace.io",
+            connection: "Upgrade",
+            upgrade: "websocket",
+            origin: "https://pixelplace.io",
         }
-    });
-});
+        
+        client.connect('wss://pixelplace.io/socket.io/?EIO=3&transport=websocket', 'echo-protocol', null, opts);
 
-const opts = {
-        host: "pixelplace.io",
-        connection: "Upgrade",
-        upgrade: "websocket",
-        origin: "https://pixelplace.io",
+        function buildAuth(userJson) {
+            console.log(userJson)
+            return `42["init",{"authId":"${userJson.authId}","authKey":"${userJson.authKey}","authToken":"${userJson.authToken}","boardId":${userJson.boardId}}]`
+        }
+    }
 }
 
-client.connect('wss://pixelplace.io/socket.io/?EIO=3&transport=websocket', 'echo-protocol', null, opts);
 
 const sleep = ms => new Promise( res => setTimeout(res, ms));
 
-function buildAuth(userJson) {
-    return `42["init",{"authId":"${userJson.authId}","authKey":"${userJson.authKey}","authToken":"${userJson.authToken}","boardId":${userJson.boardId}}]`
-    }
+for (var i = 0; i < users.length; i++) {
+    var client = new Client(users[i], i)
+    client.init()
+}
+
 
 function parseMessage(msg) {
     var id = ""
