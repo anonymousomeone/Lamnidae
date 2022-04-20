@@ -1,23 +1,78 @@
 const WebSocketClient = require('websocket').client;
 const Jimp = require('jimp')
-const { Akdsnadsdsa } = require('./config.json');
+const { zzzr, colors, cdict } = require('./config.json');
+const EventEmitter = require('events');
 
 const client = new WebSocketClient();
 
-class Task {
+class TaskManager extends EventEmitter {
     constructor() {
+        super()
+
         this.paused = false
         this.tasks = []
 
+        // TODO: maintain art by listening on websocket for "p" messages and repairing
         this.maintaining = false
         this.maintain = []
     }
     drawRect(x, y, w, h, c) {
+        // time complexity be goin through the roof (real)
+        for (var a = 0; a < w; a++) {
+            for (var b = 0; b < h; b++) {
+                this.tasks.push(place(x + a, y + b, c))
+            }
+        }
+    }
+    
+    drawImage(img, x, y) {
+        console.log('converting image')
+        Jimp.read(img, async (err, image) => {
+            var that = this
+            await image.scan(0, 0, image.bitmap.width, image.bitmap.height, function(x2, y2, idx) {
+               
+                var red = this.bitmap.data[idx + 0];
+                var green = this.bitmap.data[idx + 1];
+                var blue = this.bitmap.data[idx + 2];
+                var rgb = findColor([red, green, blue])
+    
+                var keys = Object.keys(cdict)
+                for (var i = 0; i < keys.length; i++) {
+                    if (keys[i] == rgb.join(', ')) {
+                        that.tasks.push(place(x2 + x, y2 + y, i))
+                    }
+                }
+            });
+            console.log('done')
+            this.emit('parsed')
+        })
+    }
+    
+}
 
+class Bot {
+    constructor(connection) {
+        this.connection = connection
+    }
+    init() {
+        task.on('parsed', async () => {
+            await sleep(1000)
+            console.log('drawing')
+            console.log(task.tasks)
+            for (var i = 0; i < task.tasks.length; i++) {
+                await sleep (150)
+                this.connection.sendUTF(task.tasks[0])
+                console.log(`Placing ${task.tasks[0]}`)
+                task.tasks.shift()
+            }
+        })
     }
 }
 
-const task = new Task()
+const task = new TaskManager()
+
+// task.drawRect(0, 0, 10, 10, 13)
+// console.log(task.tasks)
 
 client.on('connectFailed', function(error) {
     console.log('Connect Error: ' + error.toString());
@@ -31,10 +86,10 @@ client.on('connect', function(connection) {
     connection.on('close', function() {
         console.log('echo-protocol Connection Closed');
     });
-    connection.on('message', function(message) {
+    connection.on('message', async function(message) {
         if (message.type === 'utf8') {
             var parsed = parseMessage(message.utf8Data)
-            if (parsed.type != 'p') {
+            if (parsed.type != 'p' && parsed.type != 'chat.user.message' && parsed.type != 'l' && parsed.type != 'j') {
                 console.log(`Recieved: ${parsed.id}, ${parsed.type}, ${parsed.msg}`);
                 console.log(parsed.msg)
             }
@@ -43,11 +98,15 @@ client.on('connect', function(connection) {
             if (parsed.id == '40') {
                 console.log('Authenticating')
                 // console.log(buildAuth(Akdsnadsdsa))
-                connection.sendUTF(buildAuth(Akdsnadsdsa))
+                connection.sendUTF(buildAuth(zzzr))
 
                 // keepalive
                 setInterval(() => {connection.send('2')}, 26000)
-                setInterval(() => {connection.send(place(1938, 1536, 13))}, 1000)
+
+                const bot = new Bot(connection)
+                bot.init()
+
+                task.drawImage('test.jpg', 2800, 0)
             }
         }
     });
@@ -60,7 +119,9 @@ const opts = {
         origin: "https://pixelplace.io",
 }
 
-// client.connect('wss://pixelplace.io/socket.io/?EIO=3&transport=websocket', 'echo-protocol', null, opts);
+client.connect('wss://pixelplace.io/socket.io/?EIO=3&transport=websocket', 'echo-protocol', null, opts);
+
+const sleep = ms => new Promise( res => setTimeout(res, ms));
 
 function buildAuth(userJson) {
     return `42["init",{"authId":"${userJson.authId}","authKey":"${userJson.authKey}","authToken":"${userJson.authToken}","boardId":${userJson.boardId}}]`
@@ -86,93 +147,59 @@ function place(x, y, color) {
     return `42["p",[${x},${y},${color},1]]`
 }
 
-function parseImage(img) {
-    console.log('reading')
-    Jimp.read(img, (err, image) => {
-        image.scan(0, 0, image.bitmap.width, image.bitmap.height, function(x, y, idx) {
-           
-            var red = this.bitmap.data[idx + 0];
-            var green = this.bitmap.data[idx + 1];
-            var blue = this.bitmap.data[idx + 2];
-            var rgb = findColor([red, green, blue])
-
-            image.setPixelColor(Jimp.rgbaToInt(rgb[0], rgb[1], rgb[2], 255), x, y)
-          });
-        image.write('lena-small-bw.jpg')
-    })
-    console.log('done')
-}
-
 function findColor(rgb) {
-    // TODO: move this to config json
-    var colors = {
-        // shades of white, white => black
-        0:  [255, 255, 255],
-        1:  [196, 196, 196],
-        2:  [136, 136, 136],
-        3:  [85, 85, 85],
-        4:  [34, 34, 34],
-        5:  [0, 0, 0],
-
-        // color
-        6:  [0, 102, 0],
-        7:  [34, 177, 76],
-        8:  [2, 190, 1],
-        9:  [148, 224, 68],
-        10: [251, 255, 91],
-        11: [229, 217, 0],
-        12: [230, 190, 12],
-        13: [229, 149, 0],
-        14: [160, 106, 66],
-        15: [153, 83, 13],
-        16: [99, 60, 31],
-        17: [107, 0, 0],
-        18: [159, 0, 0],
-        19: [229, 0, 0],
-        20: [187, 79, 0],
-        21: [255, 117, 95],
-        22: [255, 196, 159],
-        23: [255, 223, 204],
-        24: [255, 167, 209],
-        25: [207, 110, 228],
-        26: [236, 8, 236],
-        27: [130, 0, 128],
-        28: [2, 7, 99],
-        29: [0, 0, 234],
-        30: [4, 75, 255],
-        31: [101, 131, 207],
-        32: [54, 186, 255],
-        33: [0, 131, 199],
-        34: [0, 211, 221],
-    }
-
-    var closest = 765
+    var closest = 999
     var res = []
-    for (var i = 0; i < Object.keys(colors).length; i++) {
-        // console.log(colors[i])
-        var d =   ((colors[i][0]-rgb[0])*0.30)^2
-                + ((colors[i][1]-rgb[1])*0.59)^2
-                + ((colors[i][2]-rgb[2])*0.11)^2
+    for (var i = 0; i < colors.length; i++) {
+        // bad comparer. dont use
+        // var d =   ((colors[i][0]-rgb[0])*0.30)^2
+        //         + ((colors[i][1]-rgb[1])*0.59)^2
+        //         + ((colors[i][2]-rgb[2])*0.11)^2
         // console.log(`${colors[i]}: ${d}`)
 
-        // color dist comparing might be buggy
-        if (d < closest && !(d < 0)) { 
-            closest = d
+        var delta = deltaE(colors[i], rgb)
+
+        if (delta < closest && !(delta < 0)) { 
+            closest = delta
             res = colors[i]
         }
     }
     return res
 }
 
-function componentToHex(c) {
-    var hex = c.toString(16);
-    return hex.length == 1 ? "0" + hex : hex;
+// https://stackoverflow.com/questions/13586999/color-difference-similarity-between-two-values-with-js
+function deltaE(rgbA, rgbB) {
+    let labA = rgb2lab(rgbA);
+    let labB = rgb2lab(rgbB);
+    let deltaL = labA[0] - labB[0];
+    let deltaA = labA[1] - labB[1];
+    let deltaB = labA[2] - labB[2];
+    let c1 = Math.sqrt(labA[1] * labA[1] + labA[2] * labA[2]);
+    let c2 = Math.sqrt(labB[1] * labB[1] + labB[2] * labB[2]);
+    let deltaC = c1 - c2;
+    let deltaH = deltaA * deltaA + deltaB * deltaB - deltaC * deltaC;
+    deltaH = deltaH < 0 ? 0 : Math.sqrt(deltaH);
+    let sc = 1.0 + 0.045 * c1;
+    let sh = 1.0 + 0.015 * c1;
+    let deltaLKlsl = deltaL / (1.0);
+    let deltaCkcsc = deltaC / (sc);
+    let deltaHkhsh = deltaH / (sh);
+    let i = deltaLKlsl * deltaLKlsl + deltaCkcsc * deltaCkcsc + deltaHkhsh * deltaHkhsh;
+    return i < 0 ? 0 : Math.sqrt(i);
 }
-
-function toHex(rgb) {
-    console.log(rgb)
-    return `#${componentToHex(rgb[0])}${componentToHex(rgb[1])}${componentToHex(rgb[2])}`
+  
+function rgb2lab(rgb){
+    let r = rgb[0] / 255, g = rgb[1] / 255, b = rgb[2] / 255, x, y, z;
+    r = (r > 0.04045) ? Math.pow((r + 0.055) / 1.055, 2.4) : r / 12.92;
+    g = (g > 0.04045) ? Math.pow((g + 0.055) / 1.055, 2.4) : g / 12.92;
+    b = (b > 0.04045) ? Math.pow((b + 0.055) / 1.055, 2.4) : b / 12.92;
+    x = (r * 0.4124 + g * 0.3576 + b * 0.1805) / 0.95047;
+    y = (r * 0.2126 + g * 0.7152 + b * 0.0722) / 1.00000;
+    z = (r * 0.0193 + g * 0.1192 + b * 0.9505) / 1.08883;
+    x = (x > 0.008856) ? Math.pow(x, 1/3) : (7.787 * x) + 16/116;
+    y = (y > 0.008856) ? Math.pow(y, 1/3) : (7.787 * y) + 16/116;
+    z = (z > 0.008856) ? Math.pow(z, 1/3) : (7.787 * z) + 16/116;
+    return [(116 * y) - 16, 500 * (x - y), 200 * (y - z)]
 }
-
 // findColor([50, 100, 100])
-parseImage('test.jpg')
+// parseImage('test.png')
