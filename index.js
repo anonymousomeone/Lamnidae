@@ -3,6 +3,7 @@ const Jimp = require('jimp')
 const { colors, cdict } = require('./config.json');
 const { users } = require('./token.json')
 const EventEmitter = require('events');
+const { parse } = require('path');
 
 class TaskManager extends EventEmitter {
     constructor() {
@@ -14,6 +15,8 @@ class TaskManager extends EventEmitter {
         // TODO: maintain art by listening on websocket for "p" messages and repairing
         this.maintaining = false
         this.maintain = []
+
+        this.bots = []
     }
     drawRect(x, y, w, h, c) {
         // time complexity be goin through the roof (real)
@@ -27,6 +30,8 @@ class TaskManager extends EventEmitter {
     
     drawImage(img, x, y) {
         console.log('converting image')
+        // TODO: get current canvas and check for pixels that are already in the right place,
+        // and dont add those to task queue
         Jimp.read(img, async (err, image) => {
             var arr = []
             await image.scan(0, 0, image.bitmap.width, image.bitmap.height, function(x2, y2, idx) {
@@ -46,10 +51,18 @@ class TaskManager extends EventEmitter {
             // make a local array so we can do operations like randomize pixel placements without modifying the task queue
             this.tasks.push(...arr)
             console.log('done')
-            this.emit('update')
         })
     }
     
+    ticker() {
+        setInterval(() => {
+            if (!task.paused) {
+                for (var i = 0; i < this.bots.length; i++) {
+                    this.bots[i].tick(i)
+                }
+            }
+        }, 200)
+    }
 }
 
 class Bot {
@@ -58,22 +71,19 @@ class Bot {
         this.id = id
     }
     init() {
-        task.on('update', async () => {
-            console.log('drawing')
-            var len = task.tasks.length
-            for (var i = 0; i < len; i++) {
-                await sleep (170)
-                console.log(`${this.id}: ${task.tasks[0]}`)
-                this.connection.sendUTF(task.tasks[0])
-                task.tasks.shift()
-            }
-        })
         this.connection.on('message', (msg) => {
             var parsed = parseMessage(msg)
             if (parsed.type == 'p' || parsed.type == 'throw.error') {
                 console.log(`Recieved: ${parsed.id}, ${parsed.type}, ${parsed.msg}`)
             }
         })
+    }
+    tick(id) {
+        if (id == this.id) {
+            console.log(`${this.id}: ${task.tasks[0]}`)
+            this.connection.sendUTF(task.tasks[0])
+            task.tasks.shift()
+        }
     }
 }
 
@@ -88,71 +98,91 @@ class Client {
         this.id = id
     }
     init() {
-        var client = new WebSocketClient()
-        var that = this
-
-        client.on('connectFailed', function(error) {
-            console.log('Connect Error: ' + error.toString());
-        });
-        client.on('connect', function(connection) {
-            console.log('WebSocket Client Connected');
-            connection.on('error', function(error) {
-                console.log("Connection Error: " + error.toString());
+        return new Promise((resolve, reject) => {
+            var client = new WebSocketClient()
+            var that = this
+    
+            client.on('connectFailed', function(error) {
+                console.log('Connect Error: ' + error.toString());
             });
-            connection.on('close', function() {
-                console.log('echo-protocol Connection Closed');
-            });
-            connection.on('message', async function(message) {
-                if (message.type === 'utf8') {
-                    var parsed = parseMessage(message.utf8Data)
-                    // if (parsed.type != 'p' && parsed.type != 'chat.user.message' && parsed.type != 'l' && parsed.type != 'j') {
-                    //     console.log(`Recieved: ${parsed.id}, ${parsed.type}, ${parsed.msg}`);
-                    //     console.log(parsed.msg)
-                    // }
-        
-                    // console.log(place({x: 1938, y:1536}, 15))
-                    if (parsed.id == '40') {
-                        console.log('Authenticating')
-                        // console.log(buildAuth(Akdsnadsdsa))
-                        connection.sendUTF(buildAuth(that.userJson))
-        
-                        // keepalive
-                        setInterval(() => {connection.send('2')}, 26000)
-                        
-                        const bot = new Bot(connection, that.id)
-                        bot.init()
-                        
-                        // task.drawImage('test.png', 0, 0)
-                        task.drawRect(120, 120, 10, 10, 15)
+            client.on('connect', function(connection) {
+                console.log('WebSocket Client Connected');
+                connection.on('error', function(error) {
+                    console.log("Connection Error: " + error.toString());
+                });
+                connection.on('close', function() {
+                    console.log('echo-protocol Connection Closed');
+                });
+                connection.on('message', async function(message) {
+                    if (message.type === 'utf8') {
+                        var parsed = parseMessage(message.utf8Data)
+                        // if (parsed.type != 'p' && parsed.type != 'chat.user.message' && parsed.type != 'l' && parsed.type != 'j') {
+                        //     console.log(`Recieved: ${parsed.id}, ${parsed.type}, ${parsed.msg}`);
+                        //     console.log(parsed.msg)
+                        // }
+                        if (parsed.id == 0) {
+                            console.log(message.utf8Data)
+                        }
+            
+                        // console.log(place({x: 1938, y:1536}, 15))
+                        if (parsed.id == '40') {
+                            console.log('Authenticating')
+                            // console.log(buildAuth(Akdsnadsdsa))
+                            connection.sendUTF(buildAuth(that.userJson))
+            
+                            // keepalive
+                            setInterval(() => {connection.send('2')}, 26000)
+                            
+                            const bot = new Bot(connection, that.id)
+                            bot.init()
+    
+                            task.bots.push(bot)
+                            resolve(that.id)
+                        }
                     }
-                }
+                });
             });
-        });
-        
-        const opts = {
-            host: "pixelplace.io",
-            connection: "Upgrade",
-            upgrade: "websocket",
-            origin: "https://pixelplace.io",
-        }
-        
-        client.connect('wss://pixelplace.io/socket.io/?EIO=3&transport=websocket', 'echo-protocol', null, opts);
-
-        function buildAuth(userJson) {
-            console.log(userJson)
-            return `42["init",{"authId":"${userJson.authId}","authKey":"${userJson.authKey}","authToken":"${userJson.authToken}","boardId":${userJson.boardId}}]`
-        }
+            
+            const opts = {
+                host: "pixelplace.io",
+                connection: "Upgrade",
+                upgrade: "websocket",
+                origin: "https://pixelplace.io",
+            }
+            
+            client.connect('wss://pixelplace.io/socket.io/?EIO=3&transport=websocket', 'echo-protocol', null, opts);
+    
+            function buildAuth(userJson) {
+                console.log(userJson)
+                return `42["init",{"authId":"${userJson.authId}","authKey":"${userJson.authKey}","authToken":"${userJson.authToken}","boardId":${userJson.boardId}}]`
+            }
+        })
     }
 }
 
 
 const sleep = ms => new Promise( res => setTimeout(res, ms));
 
-for (var i = 0; i < users.length; i++) {
-    var client = new Client(users[i], i)
-    client.init()
-}
+(async () => {
+    for (var i = 0; i < users.length; i++) {
+        var client = new Client(users[i], i)
 
+        client.init().then((id) => {
+            if (id == users.length - 1) { 
+                task.emit('ready'); 
+            }
+        })
+    }
+})();
+
+task.drawImage('test.png', 0, 0)
+// task.paused = !task.paused
+// task.drawRect(120, 120, 10, 10, 15)
+
+task.on('ready', () => {
+    console.log('ticking')
+    task.ticker()
+})
 
 function parseMessage(msg) {
     var id = ""
@@ -195,6 +225,7 @@ function findColor(rgb) {
 }
 
 // https://stackoverflow.com/questions/13586999/color-difference-similarity-between-two-values-with-js
+// TODO: improve performance by using a faster equation for getting color dist
 function deltaE(rgbA, rgbB) {
     let labA = rgb2lab(rgbA);
     let labB = rgb2lab(rgbB);
