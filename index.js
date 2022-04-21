@@ -4,6 +4,9 @@ const { colors, cdict } = require('./config.json');
 const { users } = require('./token.json')
 const EventEmitter = require('events');
 const { parse } = require('path');
+const LoginManager = require('./pixelplace-bot/login.js')
+
+const login = new LoginManager(users)
 
 class TaskManager extends EventEmitter {
     constructor() {
@@ -72,9 +75,10 @@ class Bot {
     }
     init() {
         this.connection.on('message', (msg) => {
-            var parsed = parseMessage(msg)
-            if (parsed.type == 'p' || parsed.type == 'throw.error') {
+            var parsed = parseMessage(msg.utf8Data)
+            if (parsed.type == 'throw.error') {
                 console.log(`Recieved: ${parsed.id}, ${parsed.type}, ${parsed.msg}`)
+                // console.log(msg)
             }
         })
     }
@@ -120,14 +124,14 @@ class Client {
                         //     console.log(`Recieved: ${parsed.id}, ${parsed.type}, ${parsed.msg}`);
                         //     console.log(parsed.msg)
                         // }
-                        if (parsed.id == 0) {
-                            console.log(message.utf8Data)
-                        }
+                        // if (parsed.id == 0) {
+                        //     console.log(message.utf8Data)
+                        // }
             
-                        // console.log(place({x: 1938, y:1536}, 15))
+                        // console.log(message.utf8Data)
                         if (parsed.id == '40') {
                             console.log('Authenticating')
-                            // console.log(buildAuth(Akdsnadsdsa))
+                            // console.log(buildAuth(that.userJson))
                             connection.sendUTF(buildAuth(that.userJson))
             
                             // keepalive
@@ -164,6 +168,9 @@ class Client {
 const sleep = ms => new Promise( res => setTimeout(res, ms));
 
 (async () => {
+    await login.init()
+    var users = await login.start()
+    
     for (var i = 0; i < users.length; i++) {
         var client = new Client(users[i], i)
 
@@ -175,7 +182,7 @@ const sleep = ms => new Promise( res => setTimeout(res, ms));
     }
 })();
 
-task.drawImage('test.png', 0, 0)
+task.drawImage('test.png', 100, 100)
 // task.paused = !task.paused
 // task.drawRect(120, 120, 10, 10, 15)
 

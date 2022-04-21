@@ -1,27 +1,8 @@
 const puppeteer = require('puppeteer');
-const { users } = require('../token.json')
 
-async function scraper(browser) {
-    let page = await browser.newPage();
-    console.log(`Navigating to ${this.url}...`);
-    // Navigate to the selected page
-    await page.goto(this.url);
-    // Wait for the required DOM to be rendered
-    await page.waitForSelector('.page_inner');
-    // Get the link to all the required books
-    let urls = await page.$$eval('section ol > li', links => {
-        // Make sure the book to be scraped is in stock
-        links = links.filter(link => link.querySelector('.instock.availability > i').textContent !== "In stock")
-        // Extract the links from the data
-        links = links.map(el => el.querySelector('h3 > a').href)
-        return links;
-    });
-    console.log(urls);
-}
-
-class BrowserManager {
-    constructor() {
-
+class LoginManager {
+    constructor(users) {
+        this.users = users
     }
 
     init() {
@@ -40,14 +21,16 @@ class BrowserManager {
         })
     }
 
-    open(id) {
+    login(id) {
         return new Promise(async (resolve, reject) => {
-            console.log(this.browser)
+            console.log(`trying to login as: ${this.users[id].name}`)
             var page = await this.browser.newPage()
-            await page.goto('https://pixelplace.io', {waitUntil: 'networkidle0'});
+            // go to a dead painting so waitUntil: networkidle0 works
+            await page.goto('https://pixelplace.io/52923-faked');
+            await page.waitForSelector('.desktop', {hidden: false, timeout: 50000})
 
             // be absolutely sure we are loaded
-            await sleep(300)
+            await this.sleep(300)
             console.log('loaded')
 
             // get to login popup
@@ -72,18 +55,39 @@ class BrowserManager {
                     "cancelable": false
                 })
                 btn.dispatchEvent(clickEvent)
-            }, users[id])
+            }, this.users[id])
             // 50 seconds to solve a captcha seems enough
             await page.waitForSelector('#recaptcha', {hidden: true, timeout: 50000})
             console.log('logged in!')
+
+            // site is slow, need to wait 2s to let it set cookies for some reason
+            await this.sleep(2000)
+            var data = await page._client.send('Network.getAllCookies');
+            for (var i = 0; i < data.cookies.length; i++) {
+                if (data.cookies[i].name == 'authId') {
+                    this.users[id].authId = data.cookies[i].value
+                } else if (data.cookies[i].name == 'authToken') {
+                    this.users[id].authToken = data.cookies[i].value
+                } else if (data.cookies[i].name == 'authKey') {
+                    this.users[id].authKey = data.cookies[i].value
+                }
+            }
+            await page.close()
+            resolve()
         })
     }
+
+    start() {
+        return new Promise (async (resolve, reject) => {
+            for (var i = 0; i < this.users.length; i++) {
+                // TODO: check if auth thingies are still valid, and only ask to login for invalids
+                await this.login(i)
+            }
+            // await this.browser.close()
+            resolve(this.users)
+        })
+    }
+    sleep = ms => new Promise( res => setTimeout(res, ms));
 }
 
-const browser = new BrowserManager()
-
-const sleep = ms => new Promise( res => setTimeout(res, ms));
-
-browser.init().then(() => {
-    browser.open(2)
-})
+module.exports = LoginManager;
