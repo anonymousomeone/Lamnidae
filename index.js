@@ -6,8 +6,6 @@ const EventEmitter = require('events');
 const { parse } = require('path');
 const LoginManager = require('./pixelplace-bot/login.js')
 
-const login = new LoginManager(users)
-
 class TaskManager extends EventEmitter {
     constructor() {
         super()
@@ -61,7 +59,7 @@ class TaskManager extends EventEmitter {
         setInterval(() => {
             if (!task.paused) {
                 for (var i = 0; i < this.bots.length; i++) {
-                    this.bots[i].tick(i)
+                    this.bots[i].tick()
                 }
             }
         }, 200)
@@ -82,12 +80,11 @@ class Bot {
             }
         })
     }
-    tick(id) {
-        if (id == this.id) {
-            console.log(`${this.id}: ${task.tasks[0]}`)
-            this.connection.sendUTF(task.tasks[0])
-            task.tasks.shift()
-        }
+    tick() {
+        console.log('ticked')
+        console.log(`${this.id}: ${task.tasks[0]}`)
+        this.connection.sendUTF(task.tasks[0])
+        task.tasks.shift()
     }
 }
 

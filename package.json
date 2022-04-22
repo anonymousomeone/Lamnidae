@@ -2,6 +2,7 @@
   "dependencies": {
     "jimp": "^0.16.1",
     "puppeteer": "^13.6.0",
+    "user-agents": "^1.0.994",
     "websocket": "^1.0.34"
   }
 }

@@ -1,4 +1,6 @@
 const puppeteer = require('puppeteer');
+const fs = require('fs')
+const UserAgent = require('user-agents')
 
 class LoginManager {
     constructor(users) {
@@ -10,9 +12,18 @@ class LoginManager {
             try {
                 console.log("Opening the browser......");
 
+                const useragent = new UserAgent()
+
+                var x = Math.floor(Math.random() * 500) + 500;
+                var y = Math.floor(Math.random() * 500) + 500;
+
                 this.browser = await puppeteer.launch({
                     headless: false,
-                    args: ['--disable-web-security', '--disable-features=IsolateOrigins,site-per-process']
+                    args: ['--disable-web-security', 
+                    '--disable-features=IsolateOrigins,site-per-process',
+                    "--user-agent=" + useragent + "",
+                    `--window-size=${x},${y}`
+                    ]
                 })
                 resolve()
             } catch (err) {
@@ -71,23 +82,37 @@ class LoginManager {
                 } else if (data.cookies[i].name == 'authKey') {
                     this.users[id].authKey = data.cookies[i].value
                 }
+                this.users[id].time = Date.now()
             }
             await page.close()
             resolve()
         })
     }
-
+    
     start() {
         return new Promise (async (resolve, reject) => {
             for (var i = 0; i < this.users.length; i++) {
                 // TODO: check if auth thingies are still valid, and only ask to login for invalids
-                await this.login(i)
+                if (Date.now - this.users[i].time >= 1800000) {
+                    await this.login(i)
+                }
             }
             // await this.browser.close()
+            var json = {}
+            json.users = this.users
+            fs.writeFileSync('./token.json', JSON.stringify(json, null, 2))
+            console.log(this.users)
             resolve(this.users)
         })
     }
     sleep = ms => new Promise( res => setTimeout(res, ms));
 }
 
-module.exports = LoginManager;
+const { users } = require('../token.json')
+console.log(users)
+const login = new LoginManager(users)
+login.init().then(() => {
+    login.start()
+})
+
+// module.exports = LoginManager;
