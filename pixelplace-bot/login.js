@@ -92,8 +92,9 @@ class LoginManager {
     start() {
         return new Promise (async (resolve, reject) => {
             for (var i = 0; i < this.users.length; i++) {
-                // TODO: check if auth thingies are still valid, and only ask to login for invalids
-                if (Date.now - this.users[i].time >= 1800000) {
+                // check if auth thingies are still valid, and only ask to login for invalids
+                // TODO: get actual token timeout time
+                if (Date.now() - this.users[i].time >= 1800000) {
                     await this.login(i)
                 }
             }
@@ -108,11 +109,11 @@ class LoginManager {
     sleep = ms => new Promise( res => setTimeout(res, ms));
 }
 
-const { users } = require('../token.json')
-console.log(users)
-const login = new LoginManager(users)
-login.init().then(() => {
-    login.start()
-})
+// const { users } = require('../token.json')
+// console.log(users)
+// const login = new LoginManager(users)
+// login.init().then(() => {
+//     login.start()
+// })
 
-// module.exports = LoginManager;
+module.exports = LoginManager;

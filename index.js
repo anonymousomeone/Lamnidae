@@ -6,6 +6,8 @@ const EventEmitter = require('events');
 const { parse } = require('path');
 const LoginManager = require('./pixelplace-bot/login.js')
 
+const login = new LoginManager(users)
+
 class TaskManager extends EventEmitter {
     constructor() {
         super()
@@ -75,14 +77,14 @@ class Bot {
         this.connection.on('message', (msg) => {
             var parsed = parseMessage(msg.utf8Data)
             if (parsed.type == 'throw.error') {
-                console.log(`Recieved: ${parsed.id}, ${parsed.type}, ${parsed.msg}`)
+                console.log(`${this.id}: ${parsed.id}, ${parsed.type}, ${parsed.msg}`)
                 // console.log(msg)
             }
         })
     }
     tick() {
-        console.log('ticked')
-        console.log(`${this.id}: ${task.tasks[0]}`)
+        // console.log(`${this.id}: ${task.tasks[0]}`)
+        if (!task.tasks[0]) task.paused = true
         this.connection.sendUTF(task.tasks[0])
         task.tasks.shift()
     }
@@ -130,6 +132,7 @@ class Client {
                             console.log('Authenticating')
                             // console.log(buildAuth(that.userJson))
                             connection.sendUTF(buildAuth(that.userJson))
+                            console.log(buildAuth(that.userJson))
             
                             // keepalive
                             setInterval(() => {connection.send('2')}, 26000)
@@ -179,12 +182,12 @@ const sleep = ms => new Promise( res => setTimeout(res, ms));
     }
 })();
 
-task.drawImage('test.png', 100, 100)
+task.drawImage('test.jpg', 2800, 0)
 // task.paused = !task.paused
 // task.drawRect(120, 120, 10, 10, 15)
 
 task.on('ready', () => {
-    console.log('ticking')
+    console.log('all systems are go!')
     task.ticker()
 })
 
