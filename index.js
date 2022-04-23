@@ -84,7 +84,10 @@ class Bot {
     }
     tick() {
         // console.log(`${this.id}: ${task.tasks[0]}`)
-        if (!task.tasks[0]) task.paused = true
+        if (!task.tasks[0]) {
+            task.paused = true
+            return
+        }
         this.connection.sendUTF(task.tasks[0])
         task.tasks.shift()
     }
@@ -158,7 +161,7 @@ class Client {
     
             function buildAuth(userJson) {
                 console.log(userJson)
-                return `42["init",{"authId":"${userJson.authId}","authKey":"${userJson.authKey}","authToken":"${userJson.authToken}","boardId":${userJson.boardId}}]`
+                return `42["init",{"authKey":"${userJson.authKey}","authToken":"${userJson.authToken}","authId":"${userJson.authId}","boardId":${userJson.boardId}}]`
             }
         })
     }
