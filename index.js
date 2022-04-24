@@ -3,10 +3,11 @@ const Jimp = require('jimp')
 const { colors, cdict } = require('./config.json');
 const { users } = require('./token.json')
 const EventEmitter = require('events');
-const { parse } = require('path');
 const LoginManager = require('./pixelplace-bot/login.js')
 
 const login = new LoginManager(users)
+
+// TODO: move all of these classes, its getting too cluttered
 
 class TaskManager extends EventEmitter {
     constructor() {
@@ -20,6 +21,33 @@ class TaskManager extends EventEmitter {
         this.maintain = []
 
         this.bots = []
+
+        this.canvas = []
+    }
+    async init(id) {
+        // get canvas woooooo
+        var url = `https://pixelplace.io/canvas/${id}.png?t200000=${Date.now()}`
+        const image = await Jimp.read(url);
+        var that = this
+
+        console.log('Processing canvas')
+        var ms = Date.now()
+        var arr = []
+
+        await image.scan(0, 0, image.bitmap.width, image.bitmap.height, function(x, y, idx) {
+            var red = this.bitmap.data[idx + 0];
+            var green = this.bitmap.data[idx + 1];
+            var blue = this.bitmap.data[idx + 2];
+            var rgb = [red, green, blue]
+
+            arr.push([x, y, rgb, 1]);
+            if (x >= image.bitmap.width - 1) {
+                that.canvas.push(arr);
+                arr = [];
+            }
+        })
+        console.log(`Processed in ${Date.now() - ms}ms`)
+        // format: canvas[y][x]
     }
     drawRect(x, y, w, h, c) {
         // time complexity be goin through the roof (real)
@@ -32,11 +60,12 @@ class TaskManager extends EventEmitter {
     }
     
     drawImage(img, x, y) {
-        console.log('converting image')
+        // console.log('converting image')
         // TODO: get current canvas and check for pixels that are already in the right place,
         // and dont add those to task queue
         Jimp.read(img, async (err, image) => {
             var arr = []
+            var that = this
             await image.scan(0, 0, image.bitmap.width, image.bitmap.height, function(x2, y2, idx) {
                
                 var red = this.bitmap.data[idx + 0];
@@ -44,30 +73,44 @@ class TaskManager extends EventEmitter {
                 var blue = this.bitmap.data[idx + 2];
                 var rgb = findColor([red, green, blue])
     
-                var keys = Object.keys(cdict)
-                for (var i = 0; i < keys.length; i++) {
-                    if (keys[i] == rgb.join(', ')) {
-                        arr.push(place(x2 + x, y2 + y, i))
+                if (!that.check(rgb, x2 + x, y2 + y)) {
+                    for (var i = 0; i < cdict.length; i++) {
+                        if (cdict[i].every((val, index) => val === rgb[index])) {
+                            arr.push(place(x2 + x, y2 + y, i))
+                        }
                     }
                 }
             });
             // make a local array so we can do operations like randomize pixel placements without modifying the task queue
             this.tasks.push(...arr)
-            console.log('done')
+            console.log(this.tasks)
+            // console.log('done')
         })
     }
     
     ticker() {
+        console.log('TASKER: drawing...')
         setInterval(() => {
             if (!task.paused) {
+                if (this.bots.length <= 0) {
+                    console.error('TASKER: no bots?\ninsert megamind meme here')
+                    process.exit(1)
+                }
                 for (var i = 0; i < this.bots.length; i++) {
                     this.bots[i].tick()
                 }
+            } else {
+                console.log('Paused')
             }
         }, 200)
     }
+
+    check(rgb, x, y) {
+        return rgb.every((val, index) => val === findColor(this.canvas[y][x][2])[index])
+    }
 }
 
+// TODO: fix bots not authenticating right
 class Bot {
     constructor(connection, id) {
         this.connection = connection
@@ -78,12 +121,18 @@ class Bot {
             var parsed = parseMessage(msg.utf8Data)
             if (parsed.type == 'throw.error') {
                 console.log(`${this.id}: ${parsed.id}, ${parsed.type}, ${parsed.msg}`)
-                // console.log(msg)
+                console.error(`${this.id}: ABORTING`)
+                
+                for (var i = 0; i < task.bots.length; i++) {
+                    if (task.bots[i].id == this.id) {
+                        task.bots.splice(i, 1)
+                    }
+                }
             }
         })
     }
     tick() {
-        // console.log(`${this.id}: ${task.tasks[0]}`)
+        console.log(`${this.id}: ${task.tasks[0]}`)
         if (!task.tasks[0]) {
             task.paused = true
             return
@@ -112,7 +161,7 @@ class Client {
                 console.log('Connect Error: ' + error.toString());
             });
             client.on('connect', function(connection) {
-                console.log('WebSocket Client Connected');
+                // console.log('WebSocket Client Connected');
                 connection.on('error', function(error) {
                     console.log("Connection Error: " + error.toString());
                 });
@@ -132,10 +181,9 @@ class Client {
             
                         // console.log(message.utf8Data)
                         if (parsed.id == '40') {
-                            console.log('Authenticating')
+                            // console.log('Authenticating')
                             // console.log(buildAuth(that.userJson))
                             connection.sendUTF(buildAuth(that.userJson))
-                            console.log(buildAuth(that.userJson))
             
                             // keepalive
                             setInterval(() => {connection.send('2')}, 26000)
@@ -160,7 +208,6 @@ class Client {
             client.connect('wss://pixelplace.io/socket.io/?EIO=3&transport=websocket', 'echo-protocol', null, opts);
     
             function buildAuth(userJson) {
-                console.log(userJson)
                 return `42["init",{"authKey":"${userJson.authKey}","authToken":"${userJson.authToken}","authId":"${userJson.authId}","boardId":${userJson.boardId}}]`
             }
         })
@@ -171,21 +218,25 @@ class Client {
 const sleep = ms => new Promise( res => setTimeout(res, ms));
 
 (async () => {
-    await login.init()
+    await task.init(11)
     var users = await login.start()
-    
     for (var i = 0; i < users.length; i++) {
         var client = new Client(users[i], i)
-
+        
         client.init().then((id) => {
             if (id == users.length - 1) { 
                 task.emit('ready'); 
             }
         })
     }
+    task.drawImage('test.jpg', 2800, 0)
+    // console.log([255,255,255].every((val, index) => val === [255,255,255][index]))
+    // console.log()
+    
+    
+    // await sleep(10000000)
 })();
 
-task.drawImage('test.jpg', 2800, 0)
 // task.paused = !task.paused
 // task.drawRect(120, 120, 10, 10, 15)
 
