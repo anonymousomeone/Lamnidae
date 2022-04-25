@@ -11,7 +11,7 @@ class LoginManager {
         console.log(`trying to login as: ${this.users[id].name}`)
         var page = await this.browser.newPage()
 
-        await page.goto('https://pixelplace.io/');
+        await page.goto('https://pixelplace.io/', { timeout: 60000 });
         await page.waitForSelector('.desktop', {hidden: false, timeout: 50000})
 
         // be absolutely sure we are loaded
@@ -88,7 +88,8 @@ class LoginManager {
                     args: ['--disable-web-security', 
                     '--disable-features=IsolateOrigins,site-per-process',
                     "--user-agent=" + useragent + "",
-                    `--window-size=${x},${y}`
+                    `--window-size=${x},${y}`,
+                    '--proxy-server=185.118.141.254'
                     ]
                 })
             } catch (err) {

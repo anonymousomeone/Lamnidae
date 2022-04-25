@@ -64,32 +64,39 @@ class TaskManager extends EventEmitter {
         this.emit('update')
     }
     
-    drawImage(img, x, y) {
+    drawImage(img, x, y, maintain) {
+        return new Promise(async (resolve, reject) => {
+            await Jimp.read(img, (err, image) => {
+                var arr = []
+                var res = []
+                image.scan(0, 0, image.bitmap.width, image.bitmap.height, function(x2, y2, idx) {
+                   
+                    var red = this.bitmap.data[idx + 0];
+                    var green = this.bitmap.data[idx + 1];
+                    var blue = this.bitmap.data[idx + 2];
+                    var rgb = findColor([red, green, blue])
+        
+                    if (!that.check(rgb, x2 + x, y2 + y)) {
+                        for (var i = 0; i < cdict.length; i++) {
+                            if (cdict[i].every((val, index) => val === rgb[index])) {
+                                arr.push([x2 + x, y2 + y, i])
+                                if (x2 >= image.bitmap.width - 1) {
+                                    res.push(arr);
+                                    arr = [];
+                                }
+                            }
+                        }
+                    }
+                });
+                // make a local array so we can do operations like randomize pixel placements without modifying the task queue
+                this.maintain.push(...res)
+                // console.log('done')
+                resolve()
+            })
+        })
         // console.log('converting image')
         // TODO: get current canvas and check for pixels that are already in the right place,
         // and dont add those to task queue
-        Jimp.read(img, async (err, image) => {
-            var arr = []
-            var that = this
-            await image.scan(0, 0, image.bitmap.width, image.bitmap.height, function(x2, y2, idx) {
-               
-                var red = this.bitmap.data[idx + 0];
-                var green = this.bitmap.data[idx + 1];
-                var blue = this.bitmap.data[idx + 2];
-                var rgb = findColor([red, green, blue])
-    
-                if (!that.check(rgb, x2 + x, y2 + y)) {
-                    for (var i = 0; i < cdict.length; i++) {
-                        if (cdict[i].every((val, index) => val === rgb[index])) {
-                            arr.push(place(x2 + x, y2 + y, i))
-                        }
-                    }
-                }
-            });
-            // make a local array so we can do operations like randomize pixel placements without modifying the task queue
-            this.tasks.push(...arr)
-            // console.log('done')
-        })
     }
     
     ticker() {
@@ -127,6 +134,20 @@ class TaskManager extends EventEmitter {
         this.h = y2 - y
         this.color = c
     }
+
+    pHandler(msg) {
+        if (msg[2] != this.maintain[msg[1]][msg[0]][2]) {
+            this.tasks.push(msg[2])
+        }
+    }
+
+    place() {
+        for (var y = 0; y < this.maintain.length; y++) {
+            for (var x = 0; x < this.maintain[y].length; x++) {
+                this.tasks.push(place(x, y, this.maintain[y][x][2]))
+            }
+        }
+    }
 }
 
 // TODO: fix bots not authenticating right
@@ -134,6 +155,7 @@ class Bot {
     constructor(connection, id) {
         this.connection = connection
         this.id = id
+
     }
     init() {
         this.connection.on('message', (msg) => {
@@ -148,6 +170,9 @@ class Bot {
                 var time = parseInt(parsed.msg.split(':')[1])
                 this.abort(`you just got assfucked by a moderator for ${time} minutes`)
             }
+            if (parsed.type == 'p') {
+                task.pHandler(parsed.msg)
+            }
         })
     }
     abort(reason) {
@@ -159,15 +184,10 @@ class Bot {
             }
         }
     }
-    tick() {
-        // console.log(`${this.id}: ${task.tasks[0]}`)
-        if (!task.tasks[0]) {
-            task.paused = true
-            return
-        }
+    tick(pixel) {
+        // console.log(`${this.id}: ${pixel}`)
         // TODO: check if pixels were actually placed by listening for bots userid on "p" message
-        this.connection.sendUTF(task.tasks[0])
-        task.tasks.shift()
+        this.connection.sendUTF(pixel)
     }
 }
 
@@ -260,9 +280,11 @@ const sleep = ms => new Promise( res => setTimeout(res, ms));
             }
         })
     }
-    // task.drawImage('test.jpg', 1447, 556)
+    await task.drawImage('test.png', 0, 0)
+    task.place()
+
     // task.drawImage('real3.jpg', 1560, 556)
-    task.grief(1392, 1632, 1491, 1731, 6)
+    // task.grief(1392, 1632, 1491, 1731, 6)
     // console.log([255,255,255].every((val, index) => val === [255,255,255][index]))
     // console.log()
     
