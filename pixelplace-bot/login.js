@@ -69,7 +69,7 @@ class LoginManager {
             // check if auth thingies are still valid, and only ask to login for invalids
             // TODO: get actual auth timeout time
             // note: trying to authenticate again without it expiring breaks everything
-            if (Date.now() - this.users[i].time >= 3600000) {
+            if (Date.now() - this.users[i].time >= 600000) {
                 toLogin.push(i)
             }
         }
@@ -99,6 +99,8 @@ class LoginManager {
                 await this.login(toLogin[i])
             }
             await this.browser.close()
+        } else {
+            console.log('Skipping login')
         }
 
         var json = {}

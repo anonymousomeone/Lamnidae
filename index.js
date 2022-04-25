@@ -4,6 +4,7 @@ const { colors, cdict, boardId } = require('./config.json');
 const { users } = require('./token.json')
 const EventEmitter = require('events');
 const LoginManager = require('./pixelplace-bot/login.js')
+const fs = require('fs')
 
 const login = new LoginManager(users)
 
@@ -25,6 +26,7 @@ class TaskManager extends EventEmitter {
         this.canvas = []
 
         // set to lower value when "griefing"
+        this.griefing = false
         this.wait = 150
     }
     async init(id) {
@@ -99,6 +101,11 @@ class TaskManager extends EventEmitter {
                     process.exit(1)
                 }
                 for (var i = 0; i < this.bots.length; i++) {
+                    if (this.griefing) {
+                        var x = Math.floor(Math.random() * this.w) + this.x
+                        var y = Math.floor(Math.random() * this.h) + this.y
+                        this.tasks.push(place(x, y, this.color))
+                    }
                     this.bots[i].tick()
                 }
             } else {
@@ -109,6 +116,16 @@ class TaskManager extends EventEmitter {
 
     check(rgb, x, y) {
         return rgb.every((val, index) => val === this.canvas[y][x][2][index]) || this.canvas[y][x][2].every((val, index) => val === [204, 204, 204][index])
+    }
+
+    grief(x, y, x2, y2, c) {
+        this.griefing = true
+        this.x = x
+        this.y = y
+        // why do math, when you can have the code do it for you?
+        this.w = x2 - x
+        this.h = y2 - y
+        this.color = c
     }
 }
 
@@ -121,17 +138,26 @@ class Bot {
     init() {
         this.connection.on('message', (msg) => {
             var parsed = parseMessage(msg.utf8Data)
-            if (parsed.type == 'throw.error') {
-                console.log(`${this.id}: ${parsed.id}, ${parsed.type}, ${parsed.msg}`)
-                console.error(`${this.id}: ABORTING`)
-                
-                for (var i = 0; i < task.bots.length; i++) {
-                    if (task.bots[i].id == this.id) {
-                        task.bots.splice(i, 1)
-                    }
-                }
+            if (parsed.type == 'throw.error' && parsed.msg == '0') {
+                const token = require('./token.json')
+                token.users[this.id].time = 0
+                fs.writeFileSync('./token.json')
+                this.abort('authError (skill issue)')
+            }
+            if (parsed.type == 'canvas.alert') {
+                var time = parseInt(parsed.msg.split(':')[1])
+                this.abort(`you just got assfucked by a moderator for ${time} minutes`)
             }
         })
+    }
+    abort(reason) {
+        console.error(`${this.id}: ABORTING: ${reason}`)
+                
+        for (var i = 0; i < task.bots.length; i++) {
+            if (task.bots[i].id == this.id) {
+                task.bots.splice(i, 1)
+            }
+        }
     }
     tick() {
         // console.log(`${this.id}: ${task.tasks[0]}`)
@@ -221,8 +247,10 @@ class Client {
 const sleep = ms => new Promise( res => setTimeout(res, ms));
 
 (async () => {
+    console.log(`Initializing on ${boardId}`)
     await task.init(boardId)
     var users = await login.start()
+    task.wait = 20
     for (var i = 0; i < users.length; i++) {
         var client = new Client(users[i], i, boardId)
         
@@ -233,7 +261,8 @@ const sleep = ms => new Promise( res => setTimeout(res, ms));
         })
     }
     // task.drawImage('test.jpg', 1447, 556)
-    task.drawImage('real3.jpg', 1560, 556)
+    // task.drawImage('real3.jpg', 1560, 556)
+    task.grief(1392, 1632, 1491, 1731, 6)
     // console.log([255,255,255].every((val, index) => val === [255,255,255][index]))
     // console.log()
     
