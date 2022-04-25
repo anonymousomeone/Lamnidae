@@ -1,6 +1,6 @@
 const WebSocketClient = require('websocket').client;
 const Jimp = require('jimp')
-const { colors, cdict } = require('./config.json');
+const { colors, cdict, boardId } = require('./config.json');
 const { users } = require('./token.json')
 const EventEmitter = require('events');
 const LoginManager = require('./pixelplace-bot/login.js')
@@ -23,6 +23,9 @@ class TaskManager extends EventEmitter {
         this.bots = []
 
         this.canvas = []
+
+        // set to lower value when "griefing"
+        this.wait = 150
     }
     async init(id) {
         // get canvas woooooo
@@ -83,7 +86,6 @@ class TaskManager extends EventEmitter {
             });
             // make a local array so we can do operations like randomize pixel placements without modifying the task queue
             this.tasks.push(...arr)
-            console.log(this.tasks)
             // console.log('done')
         })
     }
@@ -102,11 +104,11 @@ class TaskManager extends EventEmitter {
             } else {
                 console.log('Paused')
             }
-        }, 200)
+        }, this.wait)
     }
 
     check(rgb, x, y) {
-        return rgb.every((val, index) => val === findColor(this.canvas[y][x][2])[index])
+        return rgb.every((val, index) => val === this.canvas[y][x][2][index]) || this.canvas[y][x][2].every((val, index) => val === [204, 204, 204][index])
     }
 }
 
@@ -132,11 +134,12 @@ class Bot {
         })
     }
     tick() {
-        console.log(`${this.id}: ${task.tasks[0]}`)
+        // console.log(`${this.id}: ${task.tasks[0]}`)
         if (!task.tasks[0]) {
             task.paused = true
             return
         }
+        // TODO: check if pixels were actually placed by listening for bots userid on "p" message
         this.connection.sendUTF(task.tasks[0])
         task.tasks.shift()
     }
@@ -148,9 +151,10 @@ const task = new TaskManager()
 
 
 class Client {
-    constructor(userJson, id) {
+    constructor(userJson, id, boardid) {
         this.userJson = userJson
         this.id = id
+        this.boardid = boardid
     }
     init() {
         return new Promise((resolve, reject) => {
@@ -182,8 +186,7 @@ class Client {
                         // console.log(message.utf8Data)
                         if (parsed.id == '40') {
                             // console.log('Authenticating')
-                            // console.log(buildAuth(that.userJson))
-                            connection.sendUTF(buildAuth(that.userJson))
+                            connection.sendUTF(buildAuth(that.userJson, that.boardid))
             
                             // keepalive
                             setInterval(() => {connection.send('2')}, 26000)
@@ -207,8 +210,8 @@ class Client {
             
             client.connect('wss://pixelplace.io/socket.io/?EIO=3&transport=websocket', 'echo-protocol', null, opts);
     
-            function buildAuth(userJson) {
-                return `42["init",{"authKey":"${userJson.authKey}","authToken":"${userJson.authToken}","authId":"${userJson.authId}","boardId":${userJson.boardId}}]`
+            function buildAuth(userJson, boardid) {
+                return `42["init",{"authKey":"${userJson.authKey}","authToken":"${userJson.authToken}","authId":"${userJson.authId}","boardId":${boardid}}]`
             }
         })
     }
@@ -218,10 +221,10 @@ class Client {
 const sleep = ms => new Promise( res => setTimeout(res, ms));
 
 (async () => {
-    await task.init(11)
+    await task.init(boardId)
     var users = await login.start()
     for (var i = 0; i < users.length; i++) {
-        var client = new Client(users[i], i)
+        var client = new Client(users[i], i, boardId)
         
         client.init().then((id) => {
             if (id == users.length - 1) { 
@@ -229,7 +232,8 @@ const sleep = ms => new Promise( res => setTimeout(res, ms));
             }
         })
     }
-    task.drawImage('test.jpg', 2800, 0)
+    // task.drawImage('test.jpg', 1447, 556)
+    task.drawImage('real3.jpg', 1560, 556)
     // console.log([255,255,255].every((val, index) => val === [255,255,255][index]))
     // console.log()
     

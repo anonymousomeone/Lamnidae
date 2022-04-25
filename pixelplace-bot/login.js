@@ -43,8 +43,7 @@ class LoginManager {
         }, this.users[id])
         // 50 seconds to solve a captcha seems enough
         await page.waitForSelector('#recaptcha', {hidden: true, timeout: 50000})
-        console.log('logged in!')
-
+        
         // site is slow, need to wait 2s to let it set cookies for some reason
         await this.sleep(2000)
         var data = await page._client.send('Network.getAllCookies');
@@ -58,6 +57,9 @@ class LoginManager {
             }
             this.users[id].time = Date.now()
         }
+        const client = await page.target().createCDPSession();
+        await client.send('Network.clearBrowserCookies');
+        console.log('logged in!')
         await page.close()
     }
     
@@ -66,13 +68,13 @@ class LoginManager {
         for (var i = 0; i < this.users.length; i++) {
             // check if auth thingies are still valid, and only ask to login for invalids
             // TODO: get actual auth timeout time
-            if (Date.now() - this.users[i].time >= 600000) {
+            // note: trying to authenticate again without it expiring breaks everything
+            if (Date.now() - this.users[i].time >= 3600000) {
                 toLogin.push(i)
             }
         }
         
         if (toLogin.indexOf(0) != -1) {
-            console.log(toLogin)
             try {
                 // console.log("Opening the browser......");
 
