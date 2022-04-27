@@ -42,6 +42,9 @@ class LoginManager {
                 })
                 btn.dispatchEvent(clickEvent)
             }, this.users[id])
+
+            // make sure captcha loaded
+            await page.waitForSelector('#recaptcha', {hidden: false, timeout: 1000})
             // 50 seconds to solve a captcha seems enough
             await page.waitForSelector('#recaptcha', {hidden: true, timeout: 50000})
             

@@ -9,6 +9,7 @@ const fs = require('fs')
 const login = new LoginManager(users)
 
 // TODO: move all of these classes, its getting too cluttered
+// TODO: organize
 
 class TaskManager extends EventEmitter {
     constructor() {
@@ -17,7 +18,6 @@ class TaskManager extends EventEmitter {
         this.paused = false
         this.tasks = []
 
-        // TODO: maintain art by listening on websocket for "p" messages and repairing
         this.maintaining = false
         this.maintain = []
 
@@ -118,7 +118,7 @@ class TaskManager extends EventEmitter {
     }
 
     check(rgb, x, y) {
-        return rgb.every((val, index) => val === findColor(this.canvas[y][x][2])[index]) || this.canvas[y][x][2].every((val, index) => val === [204, 204, 204][index])
+        return rgb.every((val, index) => val === this.canvas[y][x][2][index]) || this.canvas[y][x][2].every((val, index) => val === [204, 204, 204][index])
     }
 
     grief(x, y, x2, y2, c) {
@@ -180,7 +180,6 @@ class TaskManager extends EventEmitter {
     }
 }
 
-// TODO: fix bots not authenticating right
 class Bot {
     constructor(connection, id) {
         this.connection = connection
@@ -255,7 +254,7 @@ class Client {
                 });
                 connection.on('close', function() {
                     // real
-                    console.error(this.id + ": Connection terminated. I'm sorry to interrupt you, Elizabeth, if you still even remember that name, But I'm afraid you've been misinformed.")
+                    console.error(that.id + ": Connection terminated. I'm sorry to interrupt you, Elizabeth, if you still even remember that name, But I'm afraid you've been misinformed.")
                 });
                 connection.on('message', async function(message) {
                     if (message.type === 'utf8') {
@@ -309,7 +308,9 @@ const sleep = ms => new Promise( res => setTimeout(res, ms));
     console.log(`Initializing on ${boardId}`)
     await task.init(boardId)
     var users = await login.start()
-    // task.wait = 20
+    // this speed is for anarchy only
+    // it is recommended to use default when youre unsure
+    task.wait = 75
     for (var i = 0; i < users.length; i++) {
         var client = new Client(users[i], i, boardId)
         
@@ -319,8 +320,8 @@ const sleep = ms => new Promise( res => setTimeout(res, ms));
             }
         })
     }
-    await task.drawImage('test.jpg', 2800, 0)
-    task.place(2800, 0)
+    await task.drawImage('real3.jpg', 730, 127)
+    task.place(730, 127)
 
     // task.drawImage('real3.jpg', 1560, 556)
     // task.grief(1392, 1632, 1491, 1731, 6)
@@ -380,7 +381,7 @@ function findColor(rgb) {
 }
 
 // https://stackoverflow.com/questions/13586999/color-difference-similarity-between-two-values-with-js
-// TODO: improve performance by using a faster equation for getting color dist
+// TODO: do rgb quantisizing when placing only
 function deltaE(rgbA, rgbB) {
     let labA = rgb2lab(rgbA);
     let labB = rgb2lab(rgbB);
@@ -400,7 +401,7 @@ function deltaE(rgbA, rgbB) {
     let i = deltaLKlsl * deltaLKlsl + deltaCkcsc * deltaCkcsc + deltaHkhsh * deltaHkhsh;
     return i < 0 ? 0 : Math.sqrt(i);
 }
-  
+
 function rgb2lab(rgb){
     let r = rgb[0] / 255, g = rgb[1] / 255, b = rgb[2] / 255, x, y, z;
     r = (r > 0.04045) ? Math.pow((r + 0.055) / 1.055, 2.4) : r / 12.92;
