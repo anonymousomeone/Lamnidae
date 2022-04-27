@@ -27,7 +27,9 @@ class TaskManager extends EventEmitter {
 
         // set to lower value when "griefing"
         this.griefing = false
-        this.wait = 150
+        this.wait = 200
+
+        this.cache = []
     }
     async init(id) {
         // get canvas woooooo
@@ -75,21 +77,16 @@ class TaskManager extends EventEmitter {
                     var green = this.bitmap.data[idx + 1];
                     var blue = this.bitmap.data[idx + 2];
                     var rgb = findColor([red, green, blue])
-        
-                    if (!that.check(rgb, x2 + x, y2 + y)) {
-                        for (var i = 0; i < cdict.length; i++) {
-                            if (cdict[i].every((val, index) => val === rgb[index])) {
-                                arr.push([x2 + x, y2 + y, i])
-                                if (x2 >= image.bitmap.width - 1) {
-                                    res.push(arr);
-                                    arr = [];
-                                }
-                            }
-                        }
+
+                    arr.push([x2 + x, y2 + y, rgb])
+                    if (x2 >= image.bitmap.width - 1) {
+                        res.push(arr);
+                        arr = [];
                     }
                 });
                 // make a local array so we can do operations like randomize pixel placements without modifying the task queue
                 this.maintain.push(...res)
+                console.log(this.maintain[0][0])
                 // console.log('done')
                 resolve()
             })
@@ -102,27 +99,26 @@ class TaskManager extends EventEmitter {
     ticker() {
         console.log('TASKER: drawing...')
         setInterval(() => {
-            if (!task.paused) {
-                if (this.bots.length <= 0) {
-                    console.error('TASKER: no bots?\ninsert megamind meme here')
-                    process.exit(1)
-                }
-                for (var i = 0; i < this.bots.length; i++) {
+            if (this.bots.length <= 0) {
+                console.error('TASKER: no bots?\ninsert megamind meme here')
+                process.exit(1)
+            }
+            for (var i = 0; i < this.bots.length; i++) {
+                if (!this.paused && this.tasks.length != 0) {
                     if (this.griefing) {
                         var x = Math.floor(Math.random() * this.w) + this.x
                         var y = Math.floor(Math.random() * this.h) + this.y
                         this.tasks.push(place(x, y, this.color))
                     }
-                    this.bots[i].tick()
+                    this.bots[i].tick(this.tasks[0])
+                    this.tasks.shift()
                 }
-            } else {
-                console.log('Paused')
             }
         }, this.wait)
     }
 
     check(rgb, x, y) {
-        return rgb.every((val, index) => val === this.canvas[y][x][2][index]) || this.canvas[y][x][2].every((val, index) => val === [204, 204, 204][index])
+        return rgb.every((val, index) => val === findColor(this.canvas[y][x][2])[index]) || this.canvas[y][x][2].every((val, index) => val === [204, 204, 204][index])
     }
 
     grief(x, y, x2, y2, c) {
@@ -136,15 +132,49 @@ class TaskManager extends EventEmitter {
     }
 
     pHandler(msg) {
-        if (msg[2] != this.maintain[msg[1]][msg[0]][2]) {
-            this.tasks.push(msg[2])
+        // me when math 😭😭😭
+        var len = this.maintain.length - 1
+        var minx = this.maintain[0][0][0]
+        var miny = this.maintain[0][0][1]
+        var maxy = this.maintain[len][this.maintain[len].length - 1][1]
+        var maxx = this.maintain[len][this.maintain[len].length - 1][0]
+
+        for (var i = 0; i < msg.length; i++) {
+            // debugger
+            if (msg[i][0] >= minx && msg[i][1] >= miny) {
+                if (msg[i][0] < maxx && msg[i][1] < maxy) {
+                    // debugger
+                    if (msg[i][2] != this.rgbCdict(this.maintain[msg[i][1] - this.y] [msg[i][0] - this.x] [2])) {
+                        if (this.tasks.indexOf(msg[i]) == -1) {
+                            this.tasks.push(place(msg[i][0], msg[i][1], this.rgbCdict(this.maintain[msg[i][1] - this.y][msg[i][0] - this.x][2])))
+                        }
+                    }
+                }
+            }
         }
     }
 
-    place() {
-        for (var y = 0; y < this.maintain.length; y++) {
-            for (var x = 0; x < this.maintain[y].length; x++) {
-                this.tasks.push(place(x, y, this.maintain[y][x][2]))
+    place(x, y) {
+        this.x = x
+        this.y = y
+        for (var y2 = 0; y2 < this.maintain.length; y2++) {
+            for (var x2 = 0; x2 < this.maintain[y2].length; x2++) {
+
+                if (!this.check(this.maintain[y2][x2][2], x + x2, y + y2)) {
+                    for (var i = 0; i < cdict.length; i++) {
+                        if (cdict[i].every((val, index) => val === this.maintain[y2][x2][2][index])) {
+                            this.tasks.push(place(this.maintain[y2][x2][0], this.maintain[y2][x2][1], i))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    rgbCdict(rgb) {
+        for (var i = 0; i < cdict.length; i++) {
+            if (cdict[i].every((val, index) => val === rgb[index])) {
+                return i
             }
         }
     }
@@ -158,22 +188,29 @@ class Bot {
 
     }
     init() {
-        this.connection.on('message', (msg) => {
-            var parsed = parseMessage(msg.utf8Data)
-            if (parsed.type == 'throw.error' && parsed.msg == '0') {
-                const token = require('./token.json')
-                token.users[this.id].time = 0
-                fs.writeFileSync('./token.json')
-                this.abort('authError (skill issue)')
-            }
-            if (parsed.type == 'canvas.alert') {
-                var time = parseInt(parsed.msg.split(':')[1])
-                this.abort(`you just got assfucked by a moderator for ${time} minutes`)
-            }
-            if (parsed.type == 'p') {
-                task.pHandler(parsed.msg)
-            }
-        })
+        try {
+            this.connection.on('message', (msg) => {
+                var parsed = parseMessage(msg.utf8Data)
+                if (parsed.type == 'throw.error' && parsed.msg == '0') {
+                    const token = require('./token.json')
+                    token.users[this.id].time = 0
+
+                    var json = {}
+                    json.users = token.users
+                    fs.writeFileSync('./token.json', JSON.stringify(json, null, 2))
+                    this.abort('authError (skill issue)')
+                }
+                if (parsed.type == 'canvas.alert' && parsed.msg.contains('disabled')) {
+                    var time = parseInt(parsed.msg.split(':')[1])
+                    this.abort(`you just got assfucked by a moderator for ${time} minutes`)
+                }
+                if (parsed.type == 'p') {
+                    task.pHandler(parsed.msg)
+                }
+            })
+        } catch(e) {
+            console.error(`you just got skill issued by: ${e}`)
+        }
     }
     abort(reason) {
         console.error(`${this.id}: ABORTING: ${reason}`)
@@ -183,6 +220,7 @@ class Bot {
                 task.bots.splice(i, 1)
             }
         }
+        this.connection.close()
     }
     tick(pixel) {
         // console.log(`${this.id}: ${pixel}`)
@@ -213,10 +251,11 @@ class Client {
             client.on('connect', function(connection) {
                 // console.log('WebSocket Client Connected');
                 connection.on('error', function(error) {
-                    console.log("Connection Error: " + error.toString());
+                    console.log("Connection Error: " + error.toString())
                 });
                 connection.on('close', function() {
-                    console.log('echo-protocol Connection Closed');
+                    // real
+                    console.error(this.id + ": Connection terminated. I'm sorry to interrupt you, Elizabeth, if you still even remember that name, But I'm afraid you've been misinformed.")
                 });
                 connection.on('message', async function(message) {
                     if (message.type === 'utf8') {
@@ -270,7 +309,7 @@ const sleep = ms => new Promise( res => setTimeout(res, ms));
     console.log(`Initializing on ${boardId}`)
     await task.init(boardId)
     var users = await login.start()
-    task.wait = 20
+    // task.wait = 20
     for (var i = 0; i < users.length; i++) {
         var client = new Client(users[i], i, boardId)
         
@@ -280,8 +319,8 @@ const sleep = ms => new Promise( res => setTimeout(res, ms));
             }
         })
     }
-    await task.drawImage('test.png', 0, 0)
-    task.place()
+    await task.drawImage('test.jpg', 2800, 0)
+    task.place(2800, 0)
 
     // task.drawImage('real3.jpg', 1560, 556)
     // task.grief(1392, 1632, 1491, 1731, 6)
