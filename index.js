@@ -9,6 +9,9 @@ const fs = require('fs')
 const login = new LoginManager(users)
 
 // TODO: move all of these classes, its getting too cluttered
+// TODO: make desktop app with electron.js because hehehehaw
+// so it better than bababot
+// https://www.electronjs.org/
 
 class TaskManager extends EventEmitter {
     constructor() {
@@ -17,7 +20,6 @@ class TaskManager extends EventEmitter {
         this.paused = false
         this.tasks = []
 
-        // TODO: maintain art by listening on websocket for "p" messages and repairing
         this.maintaining = false
         this.maintain = []
 
@@ -32,13 +34,13 @@ class TaskManager extends EventEmitter {
         this.cache = []
     }
     async init(id) {
+        console.log('Processing canvas')
+        var ms = Date.now()
         // get canvas woooooo
         var url = `https://pixelplace.io/canvas/${id}.png?t200000=${Date.now()}`
         const image = await Jimp.read(url);
         var that = this
 
-        console.log('Processing canvas')
-        var ms = Date.now()
         var arr = []
 
         await image.scan(0, 0, image.bitmap.width, image.bitmap.height, function(x, y, idx) {
@@ -92,29 +94,38 @@ class TaskManager extends EventEmitter {
             })
         })
         // console.log('converting image')
-        // TODO: get current canvas and check for pixels that are already in the right place,
-        // and dont add those to task queue
     }
     
     ticker() {
-        console.log('TASKER: drawing...')
+        console.log(`TASKER: drawing with ${this.bots.length} bots`)
         setInterval(() => {
             if (this.bots.length <= 0) {
                 console.error('TASKER: no bots?\ninsert megamind meme here')
                 process.exit(1)
             }
             for (var i = 0; i < this.bots.length; i++) {
-                if (!this.paused && this.tasks.length != 0) {
-                    if (this.griefing) {
-                        var x = Math.floor(Math.random() * this.w) + this.x
-                        var y = Math.floor(Math.random() * this.h) + this.y
+                if (this.griefing && !this.paused) {
+                    var x = Math.floor(Math.random() * this.w) + this.x
+                    var y = Math.floor(Math.random() * this.h) + this.y
+                    if (!this.check(this.color, x, y)) {
                         this.tasks.push(place(x, y, this.color))
                     }
+                }
+                if (!this.paused && this.tasks.length != 0) {
                     this.bots[i].tick(this.tasks[0])
                     this.tasks.shift()
                 }
             }
         }, this.wait)
+
+        setInterval(() => {
+            for (var i = 0; i < this.cache.length; i++) {
+                if (!this.griefing) {
+                    this.pHandler(this.cache[i])
+                    this.cache.shift()
+                }
+            }
+        }, 20)
     }
 
     check(rgb, x, y) {
@@ -140,10 +151,10 @@ class TaskManager extends EventEmitter {
         var maxx = this.maintain[len][this.maintain[len].length - 1][0]
 
         for (var i = 0; i < msg.length; i++) {
-            // debugger
+
             if (msg[i][0] >= minx && msg[i][1] >= miny) {
                 if (msg[i][0] < maxx && msg[i][1] < maxy) {
-                    // debugger
+
                     if (msg[i][2] != this.rgbCdict(this.maintain[msg[i][1] - this.y] [msg[i][0] - this.x] [2])) {
                         if (this.tasks.indexOf(msg[i]) == -1) {
                             this.tasks.push(place(msg[i][0], msg[i][1], this.rgbCdict(this.maintain[msg[i][1] - this.y][msg[i][0] - this.x][2])))
@@ -178,6 +189,12 @@ class TaskManager extends EventEmitter {
             }
         }
     }
+
+    // TODO: finish
+    // for Pallete (0vC4#7152) :)
+    border(x, y) {
+        // asdsda
+    }
 }
 
 // TODO: fix bots not authenticating right
@@ -205,7 +222,7 @@ class Bot {
                     this.abort(`you just got assfucked by a moderator for ${time} minutes`)
                 }
                 if (parsed.type == 'p') {
-                    task.pHandler(parsed.msg)
+                    task.cache.push(parsed.msg)
                 }
             })
         } catch(e) {
@@ -255,7 +272,7 @@ class Client {
                 });
                 connection.on('close', function() {
                     // real
-                    console.error(this.id + ": Connection terminated. I'm sorry to interrupt you, Elizabeth, if you still even remember that name, But I'm afraid you've been misinformed.")
+                    console.error(that.id + ": Connection terminated. I'm sorry to interrupt you, Elizabeth, if you still even remember that name, But I'm afraid you've been misinformed.")
                 });
                 connection.on('message', async function(message) {
                     if (message.type === 'utf8') {
@@ -308,19 +325,20 @@ const sleep = ms => new Promise( res => setTimeout(res, ms));
 (async () => {
     console.log(`Initializing on ${boardId}`)
     await task.init(boardId)
+    // task.grief(730, 127, 1000, 330, 0)
+    await task.drawImage('real3.jpg', 730, 127)
+    task.place(730, 127)
     var users = await login.start()
-    // task.wait = 20
+    task.wait = 50
     for (var i = 0; i < users.length; i++) {
         var client = new Client(users[i], i, boardId)
         
-        client.init().then((id) => {
+        await client.init().then((id) => {
             if (id == users.length - 1) { 
                 task.emit('ready'); 
             }
         })
     }
-    await task.drawImage('test.jpg', 2800, 0)
-    task.place(2800, 0)
 
     // task.drawImage('real3.jpg', 1560, 556)
     // task.grief(1392, 1632, 1491, 1731, 6)
@@ -380,7 +398,7 @@ function findColor(rgb) {
 }
 
 // https://stackoverflow.com/questions/13586999/color-difference-similarity-between-two-values-with-js
-// TODO: improve performance by using a faster equation for getting color dist
+// TODO: compare dist when drawing
 function deltaE(rgbA, rgbB) {
     let labA = rgb2lab(rgbA);
     let labB = rgb2lab(rgbB);

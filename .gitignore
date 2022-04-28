@@ -1,8 +1,5 @@
 package-lock.json
 node_modules
 token.json
-test.png
-test.jpg
-real2.jpg
-real3.jpg
-real3.png
+*.png
+*.jpg
