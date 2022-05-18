@@ -4,3 +4,9 @@ token.json
 *.png
 *.jpg
 .vscode
+tokens.json
+test.png
+test.jpg
+real2.jpg
+real3.jpg
+real3.png
