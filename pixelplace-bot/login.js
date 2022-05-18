@@ -9,7 +9,8 @@ class LoginManager {
 
     async login(id) {
         try {
-            console.log(`trying to login as: ${this.users[id].name}`)
+            var user = this.users[id]
+            console.log(`trying to login as: ${user.name}`)
             var page = await this.browser.newPage()
 
             await page.goto('https://pixelplace.io/', { timeout: 60000 });
@@ -41,7 +42,7 @@ class LoginManager {
                     "cancelable": false
                 })
                 btn.dispatchEvent(clickEvent)
-            }, this.users[id])
+            }, user)
 
             await page.waitForSelector('#recaptcha', {hidden: false, timeout: 10000})
             // 50 seconds to solve a captcha seems enough
@@ -52,26 +53,30 @@ class LoginManager {
             var data = await page._client.send('Network.getAllCookies');
             for (var i = 0; i < data.cookies.length; i++) {
                 if (data.cookies[i].name == 'authId') {
-                    this.users[id].authId = data.cookies[i].value
+                    user.authId = data.cookies[i].value
                 } else if (data.cookies[i].name == 'authToken') {
-                    this.users[id].authToken = data.cookies[i].value
+                    user.authToken = data.cookies[i].value
                 } else if (data.cookies[i].name == 'authKey') {
-                    this.users[id].authKey = data.cookies[i].value
+                    user.authKey = data.cookies[i].value
                 }
-                this.users[id].time = Date.now()
+                user.time = Date.now()
             }
             const client = await page.target().createCDPSession();
             await client.send('Network.clearBrowserCookies');
             console.log('logged in!')
             await page.close()
+
+            this.users[id] = user
+            return user
         } catch(e) {
-            console.error(`you just got skill issued by ${e}`)
+            console.error(`you just got skill issued by: ${e}`)
         }
     }
     
     async start() {
         var toLogin = []
         for (var i = 0; i < this.users.length; i++) {
+            if (!('time' in this.users[i])) continue
             // check if auth thingies are still valid, and only ask to login for invalids
             // TODO: get actual auth timeout time
             // note: trying to authenticate again without it expiring breaks everything
@@ -80,6 +85,7 @@ class LoginManager {
             }
         }
         
+        var loggedin = []
         if (toLogin.length > 0) {
             try {
                 // console.log("Opening the browser......");
@@ -106,18 +112,21 @@ class LoginManager {
             }
 
             for (var i = 0; i < toLogin.length; i++) {
-                await this.login(toLogin[i])
+                var user = await this.login(toLogin[i])
+                if (user != undefined) loggedin.push(user)
             }
             await this.browser.close()
         } else {
             console.log('Skipping login')
+            loggedin.push(...this.users)
         }
 
         var json = {}
         json.users = this.users
         fs.writeFileSync('./token.json', JSON.stringify(json, null, 2))
         // console.log(this.users)
-        return this.users
+        // console.log(loggedin)
+        return loggedin
 }
     sleep = ms => new Promise( res => setTimeout(res, ms));
 }
