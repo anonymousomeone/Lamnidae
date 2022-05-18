@@ -1,5 +1,9 @@
 package-lock.json
 node_modules
+token.json
+*.png
+*.jpg
+.vscode
 tokens.json
 test.png
 test.jpg
