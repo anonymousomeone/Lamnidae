@@ -95,6 +95,9 @@ class Bot {
                 if (parsed.type == 'p') {
                     this.tasker.cache.push(parsed.msg)
                 }
+                if (parsed.type == 'ping.alive') {
+                    this.connection.sendUTF(this.pongAlive())
+                }
             })
         } catch(e) {
             console.error(`you just got skill issued by: ${e}`)
@@ -117,6 +120,36 @@ class Bot {
         // TODO: build place message in bot
         this.connection.sendUTF(pixel)
     }
+    // courtesy of 0vC4
+    pongAlive = () => {
+        const {random} = Math;
+        const word = 'gmbozcfxta';
+    
+        function hash(size) {
+            const arr = [];
+            const str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            for (var i = 0; i < size; i++) arr.push(str[random()*str.length | 0]);
+            return arr.join('');
+        }
+    
+        function hash2(size) {
+            const arr = [];
+            const str = "gmbonjklezcfxtaGMBONJKLEZCFXTA";
+            for (var i = 0; i < size; i++) arr.push(str[random()*str.length | 0]);
+            return arr.join('');
+        }
+    
+        let result = '';
+        const seed = (((new Date().getTime()/1e3|0) + 1678) + '').split('');
+        const arr = [hash(5),hash(7),hash2(3),hash(8),hash2(6),hash(3),hash(6),hash2(4),hash(7),hash(6)];
+        for (const i in seed) {
+            result += arr[i];
+            result += !(random()*2|0) ? word[+seed[i]].toUpperCase() : word[+seed[i]];
+        }
+        result += '0=';
+    
+        return `42["pong.alive","${result}"]`;
+    };
 }
 
 function parseMessage(msg) {

@@ -101,7 +101,7 @@ class TaskManager extends EventEmitter {
         setInterval(() => {
             if (this.bots.length <= 0) {
                 console.error('TASKER: no bots?\ninsert megamind meme here')
-                // process.exit(1)
+                process.exit(1)
             }
             for (var i = 0; i < this.bots.length; i++) {
                 if (this.griefing && !this.paused) {

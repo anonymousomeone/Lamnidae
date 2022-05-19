@@ -75,6 +75,7 @@ class LoginManager {
     
     async start() {
         var toLogin = []
+        var loggedin = []
         for (var i = 0; i < this.users.length; i++) {
             if (!('time' in this.users[i])) continue
             // check if auth thingies are still valid, and only ask to login for invalids
@@ -87,7 +88,6 @@ class LoginManager {
             }
         }
         
-        var loggedin = []
         if (toLogin.length > 0) {
             try {
                 // console.log("Opening the browser......");
