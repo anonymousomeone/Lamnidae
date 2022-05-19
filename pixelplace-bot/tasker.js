@@ -57,6 +57,17 @@ class TaskManager extends EventEmitter {
         }
         this.emit('update')
     }
+
+    // draw rect but only within b pixels of border
+    drawBorder(x, y, w, h, c, b) {
+        for (var i = 0; i < w; i++) {
+            for (var z = 0; z < h; z++) {
+                if (this.border(x + i, y + z, b)) {
+                    this.tasks.push(place(x + i, y + z, c))
+                }
+            }
+        }
+    }
     
     parseImage(img) {
         return new Promise(async (resolve, reject) => {
@@ -193,6 +204,7 @@ class TaskManager extends EventEmitter {
         }
     }
 
+    // rgb value to pixelplace color int (no quantisizing)
     rgbCdict(rgb) {
         for (var i = 0; i < cdict.length; i++) {
             if (cdict[i].every((val, index) => val === rgb[index])) {
@@ -201,10 +213,14 @@ class TaskManager extends EventEmitter {
         }
     }
 
-    // TODO: finish
+    // check if pixel is within ```w``` pixels of a [204, 204, 204] pixel
     // for Pallete (0vC4#7152) :)
-    border(x, y) {
-        // asdsda
+    // no way this worked first try 😎😎😎
+    border(x, y, w) {
+        for (var i = 0; i < w * w; i++) {
+            if (this.canvas[y + i - w][x + i - w][2].every((v, i) => v == [204, 204, 204][i])) return true
+        }
+        return false
     }
 }
 

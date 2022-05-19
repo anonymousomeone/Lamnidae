@@ -82,6 +82,8 @@ class LoginManager {
             // note: trying to authenticate again without it expiring breaks everything
             if (Date.now() - this.users[i].time > 3600000) {
                 toLogin.push(i)
+            } else {
+                loggedin.push(this.users[i])
             }
         }
         
@@ -118,7 +120,6 @@ class LoginManager {
             await this.browser.close()
         } else {
             console.log('Skipping login')
-            loggedin.push(...this.users)
         }
 
         var json = {}

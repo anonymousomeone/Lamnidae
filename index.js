@@ -17,20 +17,20 @@ const sleep = ms => new Promise( res => setTimeout(res, ms));
     console.log(`Initializing on ${boardId}`)
     await task.init(boardId)
     // task.grief(730, 127, 1000, 330, 0)
-    await task.parseImage('test.png')
-    task.place(2800, 0)
-    var users = await login.start()
-    if (users.length == 0) {console.error('no bots (skill issue)'); process.exit(1)}
-    task.wait = 20
-    for (var i = 0; i < users.length; i++) {
-        var client = new Client(users[i], i, boardId, task)
+    // await task.parseImage('test.png')
+    // task.place(2800, 0)
+    // var users = await login.start()
+    // if (users.length == 0) {console.error('no bots (skill issue)'); process.exit(1)}
+    // task.wait = 25
+    // for (var i = 0; i < users.length; i++) {
+    //     var client = new Client(users[i], i, boardId, task)
         
-        await client.init().then((id) => {
-            if (id == users.length - 1) { 
-                task.emit('ready'); 
-            }
-        })
-    }
+    //     await client.init().then((id) => {
+    //         if (id == users.length - 1) { 
+    //             task.emit('ready'); 
+    //         }
+    //     })
+    // }
 
     // task.drawImage('real3.jpg', 1560, 556)
     // task.grief(1392, 1632, 1491, 1731, 6)
