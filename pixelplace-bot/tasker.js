@@ -62,7 +62,7 @@ class TaskManager extends EventEmitter {
     drawBorder(x, y, w, h, c, b) {
         for (var i = 0; i < w; i++) {
             for (var z = 0; z < h; z++) {
-                if (this.border(x + i, y + z, b)) {
+                if (this.border(x + i, y + z, b) && !this.check([255, 255, 255], x + i, y + z)) {
                     this.tasks.push(place(x + i, y + z, c))
                 }
             }
@@ -165,6 +165,7 @@ class TaskManager extends EventEmitter {
     }
 
     pHandler(msg) {
+        if (this.maintain[0] == undefined) return
         // me when math 😭😭😭
         var len = this.maintain.length - 1
         var minx = this.maintain[0][0][0] + this.x
@@ -215,10 +216,21 @@ class TaskManager extends EventEmitter {
 
     // check if pixel is within ```w``` pixels of a [204, 204, 204] pixel
     // for Pallete (0vC4#7152) :)
-    // no way this worked first try 😎😎😎
+    // nvm
     border(x, y, w) {
-        for (var i = 0; i < w * w; i++) {
-            if (this.canvas[y + i - w][x + i - w][2].every((v, i) => v == [204, 204, 204][i])) return true
+        for (var i = 0; i < w; i++) {
+            for (var z = 0; z < w; z++) {
+                if (this.canvas[y + i][x + z][2].every((v, i) => v === [204, 204, 204][i])) return true
+            }
+            for (var a = 0; a < w; a++) {
+                if (this.canvas[y + i][x - a][2].every((v, i) => v === [204, 204, 204][i])) return true
+            }
+            for (var z = w; z > 0; z--) {
+                if (this.canvas[y + i][x + z][2].every((v, i) => v === [204, 204, 204][i])) return true
+            }
+            for (var a = w; a > 0; a--) {
+                if (this.canvas[y + i][x - a][2].every((v, i) => v === [204, 204, 204][i])) return true
+            }
         }
         return false
     }

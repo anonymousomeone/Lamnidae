@@ -17,8 +17,9 @@ const sleep = ms => new Promise( res => setTimeout(res, ms));
     console.log(`Initializing on ${boardId}`)
     await task.init(boardId)
     // task.grief(730, 127, 1000, 330, 0)
-    await task.parseImage('rainbow.png')
-    task.place(2500, 300)
+    task.drawBorder(960, 1660, 100, 100, 31, 1)
+    // await task.parseImage('rainbow.png')
+    // task.place(2500, 300)
     var users = await login.start()
     if (users.length == 0) {console.error('no bots (skill issue)'); process.exit(1)}
     task.wait = 25
@@ -31,18 +32,7 @@ const sleep = ms => new Promise( res => setTimeout(res, ms));
             }
         })
     }
-
-    // task.drawImage('real3.jpg', 1560, 556)
-    // task.grief(1392, 1632, 1491, 1731, 6)
-    // console.log([255,255,255].every((val, index) => val === [255,255,255][index]))
-    // console.log()
-    
-    
-    // await sleep(10000000)
 })();
-
-// task.paused = !task.paused
-// task.drawRect(120, 120, 10, 10, 15)
 
 task.on('ready', () => {
     console.log('all systems are go!')
