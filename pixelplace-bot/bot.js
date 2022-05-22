@@ -81,13 +81,15 @@ class Bot {
         try {
             this.connection.on('message', (msg) => {
                 var parsed = parseMessage(msg.utf8Data)
+                // console.log(parsed)
                 if (parsed.type == 'throw.error' && parsed.msg == '0') {
                     const token = require('../token.json')
                     token.users[this.id].time = 0
 
                     fs.writeFileSync('./token.json', JSON.stringify(token, null, 2))
                     this.abort('authError (skill issue)')
-                }
+                } else if (parsed.type == 'throw.error' && parsed.msg == '4') 
+                    this.abort('premium color error')
                 if (parsed.type == 'canvas.alert' && parsed.msg.contains('disabled')) {
                     var time = parseInt(parsed.msg.split(':')[1])
                     this.abort(`you just got assfucked by a moderator for ${time} minutes`)
@@ -119,6 +121,7 @@ class Bot {
         this.tasker.pcache.push({pixel: pixel, time: Date.now()})
         // TODO: build place message in bot
         this.connection.sendUTF(pixel)
+        // console.log(`${this.id}: ${pixel}`)
     }
     // courtesy of 0vC4
     pongAlive = () => {
