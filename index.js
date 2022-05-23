@@ -22,7 +22,7 @@ const sleep = ms => new Promise( res => setTimeout(res, ms));
     // task.drawBorder(960, 1550, 536, 640, 36, 2)
     task.rainbowDrawBorder(2, 2, 2490, 2080, 2)
     // console.log(task.tasks.length)
-    // await task.parseImage('real3.jpg')
+    // await task.parseImage('eyes.jpg')
     // task.place(723, 140)
     // task.place(1227, 1604)
     var users = await login.start()

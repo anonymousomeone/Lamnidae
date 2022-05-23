@@ -210,9 +210,7 @@ class TaskManager extends EventEmitter {
                     // console.log(msg[i])
                     
                     if (msg[i][2] != this.rgbCdict(this.maintain[msg[i][1] - this.y] [msg[i][0] - this.x] [2])) {
-                        if (this.tasks.indexOf(msg[i]) == -1) {
-                            this.tasks.push(place(msg[i][0], msg[i][1], this.rgbCdict(this.maintain[msg[i][1] - this.y][msg[i][0] - this.x][2])))
-                        }
+                        this.tasks.push(place(msg[i][0], msg[i][1], this.rgbCdict(this.maintain[msg[i][1] - this.y][msg[i][0] - this.x][2])))
                     }
                 }
             }

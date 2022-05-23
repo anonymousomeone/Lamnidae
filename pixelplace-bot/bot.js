@@ -88,8 +88,11 @@ class Bot {
 
                     fs.writeFileSync('./token.json', JSON.stringify(token, null, 2))
                     this.abort('authError (skill issue)')
-                } else if (parsed.type == 'throw.error' && parsed.msg == '4') 
+                } else if (parsed.type == 'throw.error' && parsed.msg == '4') {
                     this.abort('premium color error')
+                } else if (parsed.type == 'throw.error') {
+                    console.error(`${this.id}: ${parsed}`)
+                }
                 if (parsed.type == 'canvas.alert' && parsed.msg.contains('disabled')) {
                     var time = parseInt(parsed.msg.split(':')[1])
                     this.abort(`you just got assfucked by a moderator for ${time} minutes`)

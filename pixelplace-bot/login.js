@@ -70,6 +70,7 @@ class LoginManager {
             await page.close()
 
             this.users[id] = user
+            await this.sleep(200)
             return user
         } catch(e) {
             console.error(`you just got skill issued by: ${e}`)
