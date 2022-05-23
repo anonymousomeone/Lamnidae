@@ -20,11 +20,15 @@ const sleep = ms => new Promise( res => setTimeout(res, ms));
     // var len = task.canvas.length - 1
     // console.log(task.canvas[len][task.canvas[len].length - 1][1])
     // task.drawBorder(960, 1550, 536, 640, 36, 2)
-    task.rainbowDrawBorder(2, 2, 2490, 2080, 2)
+    task.rainbowDrawBorder(2, 2, 2997, 2997, 2)
+    console.log(task.tasks.length)
     // console.log(task.tasks.length)
     // await task.parseImage('eyes.jpg')
     // task.place(723, 140)
     // task.place(1227, 1604)
+
+    // await task.parseImage('test.png')
+    // task.place(2800, 0)
     var users = await login.start()
     if (users.length == 0) {console.error('no bots (skill issue)'); process.exit(1)}
     task.wait = 25
