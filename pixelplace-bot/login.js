@@ -9,9 +9,8 @@ class LoginManager {
         this.users = users
     }
 
-    async login(id) {
+    async login(user) {
         try {
-            var user = this.users[id]
             console.log(`trying to login as: ${user.name}`)
             var page = await this.browser.newPage()
 
@@ -71,7 +70,7 @@ class LoginManager {
             console.log('logged in!')
             await page.close()
 
-            this.users[id] = user
+            this.users[user.id] = user
             await this.join(user)
             await this.sleep(200)
             return user
@@ -84,10 +83,18 @@ class LoginManager {
         var toLogin = []
         var loggedin = []
         for (var i = 0; i < this.users.length; i++) {
+            this.users[i].id = i
             var res = await this.join(this.users[i])
-            console.log(res)
-            if (res.user.name == 'Guest') toLogin.push(this.users[i])
-            else loggedin.push(this.users[i])
+            const regexp = /=([^;]*);/;
+            if (res.headers.hasOwnProperty("set-cookie")) {
+                if (!res.headers["set-cookie"][0].includes('deleted')) {
+                    this.users[i].authId = regexp.exec(res.headers["set-cookie"][0])[1]
+                    this.users[i].authKey = regexp.exec(res.headers["set-cookie"][1])[1]
+                    this.users[i].authToken = regexp.exec(res.headers["set-cookie"][2])[1]
+                }
+            }
+            if (res.user.connected) { loggedin.push(this.users[i]) }
+            else { toLogin.push(this.users[i]) }
         }
         
         if (toLogin.length > 0) {
@@ -116,7 +123,7 @@ class LoginManager {
             }
 
             for (var i = 0; i < toLogin.length; i++) {
-                var user = await this.login(i)
+                var user = await this.login(toLogin[i])
                 if (user != undefined) loggedin.push(user)
             }
             await this.browser.close()
@@ -150,8 +157,10 @@ class LoginManager {
                     json += d.toString()
                     try {
                         json = JSON.parse(json)
+                        json.headers = res.headers
                         resolve(json)
                     } catch(e) {/* hehehehaw */}
+                    console.log(res.headers)
                 });
               });
               
