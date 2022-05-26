@@ -15,12 +15,12 @@ class Client {
             var that = this
     
             client.on('connectFailed', function(error) {
-                console.log('Connect Error: ' + error.toString());
+                console.log(that.id + ': WS Connect Error: ' + error.toString());
             });
             client.on('connect', function(connection) {
                 // console.log('WebSocket Client Connected');
                 connection.on('error', function(error) {
-                    console.log("Connection Error: " + error.toString())
+                    console.log(that.id + ": Connection Error: " + error.toString())
                 });
                 connection.on('close', function() {
                     // real
@@ -101,6 +101,9 @@ class Bot {
                 }
                 if (parsed.type == 'p') {
                     this.tasker.cache.push(parsed.msg)
+                    for(var i = 0; i < parsed.msg.length; i++) {
+                        this.tasker.canvas[parsed.msg[i][1]][parsed.msg[i][0]][2] = parsed.msg[i][2]
+                    }
                 }
                 if (parsed.type == 'ping.alive') {
                     this.connection.sendUTF(this.pongAlive())

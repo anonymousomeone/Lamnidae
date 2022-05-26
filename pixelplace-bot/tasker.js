@@ -58,6 +58,21 @@ class TaskManager extends EventEmitter {
         this.emit('update')
     }
 
+    amogifier(x, y, c=20) {
+        var amogugugugugus = [['.', '$', '$', '$'],
+                              ['$', '$', '#', '#'],
+                              ['$', '$', '$', '$'],
+                              ['.', '$', '.', '$']]
+
+        for (var i = 0; i < amogugugugugus.length; i++) {
+            for (var z = 0; z < amogugugugugus[i].length; z++) {
+                if (amogugugugugus[i][z] == '.') continue
+                if (amogugugugugus[i][z] == '#') this.tasks.push([z + x, i + y, 37])
+                else this.tasks.push([z + x, i + y, c])
+            }
+        }
+    }
+
     // draw rect but only within b pixels of border
     drawBorder(x, y, w, h, c, b) {
         for (var i = 0; i < w; i++) {
@@ -126,7 +141,24 @@ class TaskManager extends EventEmitter {
                 console.error('TASKER: no bots?\ninsert megamind meme here')
                 // process.exit(1)
             }
-            this.prune()
+            
+            for (var i = 0; i < this.bots.length; i++) {
+                if (this.griefing && !this.paused) {
+                    var x = Math.floor(Math.random() * this.w) + this.x
+                    var y = Math.floor(Math.random() * this.h) + this.y
+                    // if (!this.check(this.color, x, y)) {
+                        this.tasks.push([x, y, this.color])
+                    // }
+                }
+                if (!this.paused && this.tasks.length != 0) {
+                    this.bots[i].tick(this.tasks[0])
+                    this.tasks.shift()
+                }
+            }
+
+        }, this.wait)
+
+        setInterval(() => {
             for (var i = 0; i < this.cache.length; i++) {
                 for (var y = 0; y < this.cache[i].length; y++) {
                     if (this.cache[i][y].length != 5) continue
@@ -151,7 +183,7 @@ class TaskManager extends EventEmitter {
                 for (var y = 0; y < this.cache[i].length; y++) {
                     if (!this.griefing) {
                         var handled = this.pHandler(this.cache[i][y])
-                        console.log(`${this.cache[i][y]} / ${handled}`)
+                        // console.log(`${this.cache[i][y]} / ${handled}`)
                         if (!this.exists(arr, this.cache[i][y]) && handled != undefined) arr.push(handled)
                     }
                 }
@@ -159,22 +191,7 @@ class TaskManager extends EventEmitter {
             }
             this.tasks.push(...arr)
             // console.log(this.tasks)
-            
-            for (var i = 0; i < this.bots.length; i++) {
-                if (this.griefing && !this.paused) {
-                    var x = Math.floor(Math.random() * this.w) + this.x
-                    var y = Math.floor(Math.random() * this.h) + this.y
-                    // if (!this.check(this.color, x, y)) {
-                        this.tasks.push([x, y, this.color])
-                    // }
-                }
-                if (!this.paused && this.tasks.length != 0) {
-                    this.bots[i].tick(this.tasks[0])
-                    this.tasks.shift()
-                }
-            }
-
-        }, this.wait)
+        }, 100)
     }
 
     check(rgb, x, y) {
@@ -212,7 +229,7 @@ class TaskManager extends EventEmitter {
                 if (msg[0] < maxx && msg[1] < maxy) {
                     // console.log(this.rgbCdict(this.maintain[msg[i][1] - this.y] [msg[i][0] - this.x] [2]))
                     
-                    if (msg[2] != this.rgbCdict(this.maintain[msg[1] - this.y] [msg[0] - this.x] [2])) {
+                    if (this.canvas[msg[1]][msg[0]][2] != this.rgbCdict(this.maintain[msg[1] - this.y] [msg[0] - this.x] [2])) {
                         return [msg[0], msg[1], this.rgbCdict(this.maintain[msg[1] - this.y][msg[0] - this.x][2])]
                     }
                 }
@@ -294,7 +311,6 @@ class TaskManager extends EventEmitter {
         var item_as_string = JSON.stringify([item[0], item[1], item[2]]);
 
         var contains = arr.some(function(ele){
-            console.log(`${JSON.stringify(ele)} / ${item_as_string}`)
             return JSON.stringify(ele).includes(item_as_string)
         });
 
