@@ -7,6 +7,7 @@ class Client {
         this.id = id
         this.boardid = boardid
         this.tasker = tasker
+        this.pps = 0
     }
     init() {
         return new Promise((resolve, reject) => {
@@ -76,6 +77,7 @@ class Bot {
         this.connection = connection
         this.id = id
         this.tasker = tasker
+        this.pps = 0
     }
     init() {
         try {
@@ -119,12 +121,10 @@ class Bot {
         this.connection.close()
     }
     tick(pixel) {
-        // console.log(`${this.id}: ${pixel}`)
-        // TODO: check if pixels were actually placed by listening for bots userid on "p" message
         this.tasker.pcache.push({pixel: pixel, time: Date.now()})
-        // TODO: build place message in bot
-        this.connection.sendUTF(pixel)
-        // console.log(`${this.id}: ${pixel}`)
+        this.connection.sendUTF(place(pixel[0], pixel[1], pixel[2]))
+        this.pps += 1
+        // console.log(place(pixel[0], pixel[1], pixel[2]))
     }
     // courtesy of 0vC4
     pongAlive = () => {
@@ -172,6 +172,10 @@ function parseMessage(msg) {
         message = message[1]
     }
     return { id: id, type: type, msg: message }
+}
+
+function place(x, y, color) {
+    return `42["p",[${x},${y},${color},1]]`
 }
 
 module.exports = Client

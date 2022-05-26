@@ -52,7 +52,7 @@ class TaskManager extends EventEmitter {
         // time complexity be goin through the roof (real)
         for (var a = 0; a < w; a++) {
             for (var b = 0; b < h; b++) {
-                this.tasks.push(place(x + a, y + b, c))
+                this.tasks.push([x + a, y + b, c])
             }
         }
         this.emit('update')
@@ -63,7 +63,7 @@ class TaskManager extends EventEmitter {
         for (var i = 0; i < w; i++) {
             for (var z = 0; z < h; z++) {
                 if (this.border(x + z, y + i, b) && !this.check(this.cdictRgb(c), x + z, y + i)) {
-                    this.tasks.push(place(x + z, y + i, c))
+                    this.tasks.push([x + z, y + i, c])
                     // console.log(place(x + z, y + i, c))
                 }
             }
@@ -80,7 +80,7 @@ class TaskManager extends EventEmitter {
                 if (this.border(x + z, y + i, b) && !this.background(x + z, y + i)) {
                     for (var k = 0; k < cdict.length; k++) {
                         if (cdict[k].every((v, i) => v === colors[col][i]) && !this.check(this.cdictRgb(k), x + z, y + i)) {
-                            this.tasks.push(place(x + z, y + i, k))
+                            this.tasks.push([x + z, y + i, k])
                         }
                     }
                     col++
@@ -124,44 +124,48 @@ class TaskManager extends EventEmitter {
         setInterval(() => {
             if (this.bots.length <= 0) {
                 console.error('TASKER: no bots?\ninsert megamind meme here')
-                process.exit(1)
+                // process.exit(1)
             }
-            for (var x = 0; x < this.pcache.length; x++) {
-                var pixel = parseMessage(this.pcache[x].pixel)
-                if ((Date.now() - this.pcache[x].time) > 500) {
-                    this.tasks.push(place(pixel.msg[0], pixel.msg[1], pixel.msg[2]))
-                    this.pcache.splice(x, 1)
-                }
-            }
-            
+            this.prune()
             for (var i = 0; i < this.cache.length; i++) {
                 for (var y = 0; y < this.cache[i].length; y++) {
                     if (this.cache[i][y].length != 5) continue
                     
                     for (var x = 0; x < this.pcache.length; x++) {
-                        var pixel = parseMessage(this.pcache[x].pixel)
-                        if (pixel.msg[0] != this.cache[i][y][0]) continue
-                        if (pixel.msg[1] != this.cache[i][y][1]) continue
-                        if (pixel.msg[2] != this.cache[i][y][2]) continue
+                        if (this.pcache[x].pixel[0] != this.cache[i][y][0]) continue
+                        if (this.pcache[x].pixel[1] != this.cache[i][y][1]) continue
+                        if (this.pcache[x].pixel[2] != this.cache[i][y][2]) continue
                         this.pcache.splice(x, 1)
                     }
                 }
             }
-            
-            this.prune()
-            for (var i = 0; i < this.cache.length; i++) {
-                if (!this.griefing) {
-                    this.pHandler(this.cache[i])
-                    this.cache.shift()
+            for (var x = 0; x < this.pcache.length; x++) {
+                if ((Date.now() - this.pcache[x].time) > 500) {
+                    this.tasks.push(this.pcache[x].pixel)
+                    this.pcache.splice(x, 1)
                 }
             }
-
+            
+            var arr = []
+            for (var i = 0; i < this.cache.length; i++) {
+                for (var y = 0; y < this.cache[i].length; y++) {
+                    if (!this.griefing) {
+                        var handled = this.pHandler(this.cache[i][y])
+                        console.log(`${this.cache[i][y]} / ${handled}`)
+                        if (!this.exists(arr, this.cache[i][y]) && handled != undefined) arr.push(handled)
+                    }
+                }
+                this.cache.shift()
+            }
+            this.tasks.push(...arr)
+            // console.log(this.tasks)
+            
             for (var i = 0; i < this.bots.length; i++) {
                 if (this.griefing && !this.paused) {
                     var x = Math.floor(Math.random() * this.w) + this.x
                     var y = Math.floor(Math.random() * this.h) + this.y
                     // if (!this.check(this.color, x, y)) {
-                        this.tasks.push(place(x, y, this.color))
+                        this.tasks.push([x, y, this.color])
                     // }
                 }
                 if (!this.paused && this.tasks.length != 0) {
@@ -202,15 +206,14 @@ class TaskManager extends EventEmitter {
         var maxx = this.maintain[len][this.maintain[len].length - 1][0] + this.x
         var maxy = this.maintain[len][this.maintain[len].length - 1][1] + this.y
 
-        
         for (var i = 0; i < msg.length; i++) {
             
-            if (msg[i][0] >= minx && msg[i][1] >= miny) {
-                if (msg[i][0] < maxx && msg[i][1] < maxy) {
-                    // console.log(msg[i])
+            if (msg[0] >= minx && msg[1] >= miny) {
+                if (msg[0] < maxx && msg[1] < maxy) {
+                    // console.log(this.rgbCdict(this.maintain[msg[i][1] - this.y] [msg[i][0] - this.x] [2]))
                     
-                    if (msg[i][2] != this.rgbCdict(this.maintain[msg[i][1] - this.y] [msg[i][0] - this.x] [2])) {
-                        this.tasks.push(place(msg[i][0], msg[i][1], this.rgbCdict(this.maintain[msg[i][1] - this.y][msg[i][0] - this.x][2])))
+                    if (msg[2] != this.rgbCdict(this.maintain[msg[1] - this.y] [msg[0] - this.x] [2])) {
+                        return [msg[0], msg[1], this.rgbCdict(this.maintain[msg[1] - this.y][msg[0] - this.x][2])]
                     }
                 }
             }
@@ -225,7 +228,7 @@ class TaskManager extends EventEmitter {
                 if (!this.check(this.maintain[y2][x2][2], x + x2, y + y2)) {
                     for (var i = 0; i < cdict.length; i++) {
                         if (cdict[i].every((val, index) => val === this.maintain[y2][x2][2][index])) {
-                            this.tasks.push(place(this.maintain[y2][x2][0] + x, this.maintain[y2][x2][1] + y, i))
+                            this.tasks.push([this.maintain[y2][x2][0] + x, this.maintain[y2][x2][1] + y, this.rgbCdict(this.maintain[y2][x2][2])])
                         }
                     }
                 }
@@ -242,7 +245,7 @@ class TaskManager extends EventEmitter {
         }
     }
 
-    // inverse of rgbCict()
+    // inverse of rgbCdict()
     cdictRgb(i) {
         return cdict[i]
     }
@@ -281,14 +284,22 @@ class TaskManager extends EventEmitter {
     prune() {
         for (var i = 0; i < this.cache.length; i++) {
             for (var x = 0; x < this.cache.length; x++) {
-                if (this.cache[i].every((v, i) => v === this.cache[x][i]) && x != i) this.cache.splice(x, 1)
+                if (this.cache[i].every((v, i) => v === this.cache[x][i] || i == 4) && x != i) this.cache.splice(x, 1)
             }
         }
     }
-}
 
-function place(x, y, color) {
-    return `42["p",[${x},${y},${color},1]]`
+    // stackunderflow moment
+    exists(arr, item){
+        var item_as_string = JSON.stringify([item[0], item[1], item[2]]);
+
+        var contains = arr.some(function(ele){
+            console.log(`${JSON.stringify(ele)} / ${item_as_string}`)
+            return JSON.stringify(ele).includes(item_as_string)
+        });
+
+        return contains;
+      }
 }
 
 function findColor(rgb) {

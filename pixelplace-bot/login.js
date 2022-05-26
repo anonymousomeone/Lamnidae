@@ -160,7 +160,6 @@ class LoginManager {
                         json.headers = res.headers
                         resolve(json)
                     } catch(e) {/* hehehehaw */}
-                    console.log(res.headers)
                 });
               });
               
