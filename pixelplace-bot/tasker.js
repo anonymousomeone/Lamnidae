@@ -58,17 +58,26 @@ class TaskManager extends EventEmitter {
         this.emit('update')
     }
 
-    amogifier(x, y, c=20) {
+    amogifier(x, y) {
         var amogugugugugus = [['.', '$', '$', '$'],
-                              ['$', '$', '#', '#'],
-                              ['$', '$', '$', '$'],
+                              ['%', '$', '#', '#'],
+                              ['%', '$', '$', '$'],
                               ['.', '$', '.', '$']]
+
+        var moaayi = [['#', '#', '#', '#'],
+                      ['.', '#', '#', '.'],
+                      ['.', '#', '#', '.'],
+                      ['.', '#', '#', '.'],
+                      ['.', '.', '.', '.'],
+                      ['.', '#', '#', '.'],
+                      ['.', '.', '.', '.']]
 
         for (var i = 0; i < amogugugugugus.length; i++) {
             for (var z = 0; z < amogugugugugus[i].length; z++) {
                 if (amogugugugugus[i][z] == '.') continue
                 if (amogugugugugus[i][z] == '#') this.tasks.push([z + x, i + y, 37])
-                else this.tasks.push([z + x, i + y, c])
+                if (amogugugugugus[i][z] == '%') this.tasks.push([z + x, i + y, 19])
+                else this.tasks.push([z + x, i + y, 20])
             }
         }
     }

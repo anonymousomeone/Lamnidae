@@ -46,23 +46,30 @@ const sleep = ms => new Promise( res => setTimeout(res, ms));
     }
 
     setInterval(() => {
-        task.amogifier(Math.floor(Math.random() * (2074 - 1512)) + 1512, Math.floor(Math.random() * (816 - 525) + 525))
+        var hx = 1400
+        var lx = 1150
+
+        var hy = 1100
+        var ly = 900
+        for (var i = 0; i < task.bots.length; i++) {
+            task.amogifier(Math.floor(Math.random() * (hx - lx)) + lx, Math.floor(Math.random() * (hy - ly) + ly))
+        }
         var pps = 0
         for (var i = 0; i < task.bots.length; i++) {
             pps += task.bots[i].pps
             task.bots[i].pps = 0
         }
         var completion = (task.tasks.length / pps)
-        process.stdout.write(`Pixels remaining: ${task.tasks.length}\nEst. time to completion: ${completion ?? 0} seconds\nPPS: ${pps}`)
+        console.log(`Pixels remaining: ${task.tasks.length}\nEst. time to completion: ${completion ?? 0} seconds\nPPS: ${pps}\n${task.pcache.length} / ${task.cache.length}`)
         // console.log(`${task.cache.length} / ${task.pcache.length}`)
     }, 1000)
 })();
 
 task.on('ready', async () => {
     console.log('all systems are go!')
-    await task.parseImage('test.png')
+    // await task.parseImage('real3.jpg')
     // task.place(723, 140)
-    task.place(440, 180)
+    // task.place(440, 180)
     task.ticker()
 })
 

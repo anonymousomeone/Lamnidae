@@ -15,6 +15,9 @@ class LoginManager {
             var page = await this.browser.newPage()
 
             await page.goto('https://pixelplace.io/', { timeout: 60000 });
+
+            await this.sleep(300)
+            
             await page.waitForSelector('.desktop', {hidden: false, timeout: 50000})
 
             // be absolutely sure we are loaded
