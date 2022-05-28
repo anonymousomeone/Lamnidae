@@ -99,10 +99,9 @@ class Bot {
                     var time = parseInt(parsed.msg.split(':')[1])
                     this.abort(`you just got assfucked by a moderator for ${time} minutes`)
                 }
-                if (parsed.type == 'p') {
-                    this.tasker.cache.push(parsed.msg)
-                    for(var i = 0; i < parsed.msg.length; i++) {
-                        this.tasker.canvas[parsed.msg[i][1]][parsed.msg[i][0]][2] = parsed.msg[i][2]
+                if (parsed.type == 'p' && this.tasker.bots[0].id == this.id) {
+                    for (var i = 0; i < parsed.msg.length; i++) {
+                        this.tasker.pHandler(parsed.msg[i])
                     }
                 }
                 if (parsed.type == 'ping.alive') {
@@ -124,7 +123,6 @@ class Bot {
         this.connection.close()
     }
     tick(pixel) {
-        this.tasker.pcache.push({pixel: pixel, time: Date.now()})
         this.connection.sendUTF(place(pixel[0], pixel[1], pixel[2]))
         this.pps += 1
         // console.log(place(pixel[0], pixel[1], pixel[2]))

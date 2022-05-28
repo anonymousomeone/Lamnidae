@@ -46,14 +46,15 @@ const sleep = ms => new Promise( res => setTimeout(res, ms));
     }
 
     setInterval(() => {
-        var hx = 1400
-        var lx = 1150
+        // var hx = 1400
+        // var lx = 1150
 
-        var hy = 1100
-        var ly = 900
-        for (var i = 0; i < task.bots.length; i++) {
-            task.amogifier(Math.floor(Math.random() * (hx - lx)) + lx, Math.floor(Math.random() * (hy - ly) + ly))
-        }
+        // var hy = 1100
+        // var ly = 900
+        // for (var i = 0; i < task.bots.length; i++) {
+        //     task.amogifier(Math.floor(Math.random() * (hx - lx)) + lx, Math.floor(Math.random() * (hy - ly) + ly))
+        // }
+        
         var pps = 0
         for (var i = 0; i < task.bots.length; i++) {
             pps += task.bots[i].pps
@@ -67,8 +68,8 @@ const sleep = ms => new Promise( res => setTimeout(res, ms));
 
 task.on('ready', async () => {
     console.log('all systems are go!')
-    // await task.parseImage('real3.jpg')
-    // task.place(723, 140)
+    await task.parseImage('real3.jpg')
+    task.place(723, 140)
     // task.place(440, 180)
     task.ticker()
 })

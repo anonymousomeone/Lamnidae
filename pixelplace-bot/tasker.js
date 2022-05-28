@@ -166,41 +166,6 @@ class TaskManager extends EventEmitter {
             }
 
         }, this.wait)
-
-        setInterval(() => {
-            for (var i = 0; i < this.cache.length; i++) {
-                for (var y = 0; y < this.cache[i].length; y++) {
-                    if (this.cache[i][y].length != 5) continue
-                    
-                    for (var x = 0; x < this.pcache.length; x++) {
-                        if (this.pcache[x].pixel[0] != this.cache[i][y][0]) continue
-                        if (this.pcache[x].pixel[1] != this.cache[i][y][1]) continue
-                        if (this.pcache[x].pixel[2] != this.cache[i][y][2]) continue
-                        this.pcache.splice(x, 1)
-                    }
-                }
-            }
-            for (var x = 0; x < this.pcache.length; x++) {
-                if ((Date.now() - this.pcache[x].time) > 500) {
-                    this.tasks.push(this.pcache[x].pixel)
-                    this.pcache.splice(x, 1)
-                }
-            }
-            
-            var arr = []
-            for (var i = 0; i < this.cache.length; i++) {
-                for (var y = 0; y < this.cache[i].length; y++) {
-                    if (!this.griefing) {
-                        var handled = this.pHandler(this.cache[i][y])
-                        // console.log(`${this.cache[i][y]} / ${handled}`)
-                        if (!this.exists(arr, this.cache[i][y]) && handled != undefined) arr.push(handled)
-                    }
-                }
-                this.cache.shift()
-            }
-            this.tasks.push(...arr)
-            // console.log(this.tasks)
-        }, 100)
     }
 
     check(rgb, x, y) {
@@ -231,16 +196,13 @@ class TaskManager extends EventEmitter {
         var miny = this.maintain[0][0][1] + this.y
         var maxx = this.maintain[len][this.maintain[len].length - 1][0] + this.x
         var maxy = this.maintain[len][this.maintain[len].length - 1][1] + this.y
-
-        for (var i = 0; i < msg.length; i++) {
             
-            if (msg[0] >= minx && msg[1] >= miny) {
-                if (msg[0] < maxx && msg[1] < maxy) {
-                    // console.log(this.rgbCdict(this.maintain[msg[i][1] - this.y] [msg[i][0] - this.x] [2]))
-                    
-                    if (this.canvas[msg[1]][msg[0]][2] != this.rgbCdict(this.maintain[msg[1] - this.y] [msg[0] - this.x] [2])) {
-                        return [msg[0], msg[1], this.rgbCdict(this.maintain[msg[1] - this.y][msg[0] - this.x][2])]
-                    }
+        if (msg[0] >= minx && msg[1] >= miny) {
+            if (msg[0] < maxx && msg[1] < maxy) {
+                // console.log(this.rgbCdict(this.maintain[msg[i][1] - this.y] [msg[i][0] - this.x] [2]))
+                
+                if (msg[2] != this.rgbCdict(this.maintain[msg[1] - this.y] [msg[0] - this.x] [2])) {
+                    this.tasks.push([msg[0], msg[1], this.rgbCdict(this.maintain[msg[1] - this.y][msg[0] - this.x][2])])
                 }
             }
         }
