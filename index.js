@@ -3,6 +3,11 @@ const { users } = require('./token.json')
 const LoginManager = require('./pixelplace-bot/login.js')
 const Client = require('./pixelplace-bot/bot.js')
 const TaskManager = require('./pixelplace-bot/tasker.js')
+const Server = require('./pixelplace-bot/server.js')
+
+const server = new Server()
+server.init()
+
 var readline = require('readline');
 var rl = readline.createInterface({
   input: process.stdin,
@@ -46,15 +51,15 @@ const sleep = ms => new Promise( res => setTimeout(res, ms));
     }
 
     setInterval(() => {
-        // var hx = 1400
-        // var lx = 1150
+        // var hx = 1800
+        // var lx = 1500
 
-        // var hy = 1100
-        // var ly = 900
+        // var hy = 1600
+        // var ly = 1400
         // for (var i = 0; i < task.bots.length; i++) {
         //     task.amogifier(Math.floor(Math.random() * (hx - lx)) + lx, Math.floor(Math.random() * (hy - ly) + ly))
         // }
-        
+
         var pps = 0
         for (var i = 0; i < task.bots.length; i++) {
             pps += task.bots[i].pps
