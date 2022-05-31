@@ -93,7 +93,7 @@ class Bot {
                 } else if (parsed.type == 'throw.error' && parsed.msg == '4') {
                     this.abort('premium color error')
                 } else if (parsed.type == 'throw.error') {
-                    console.error(`${this.id}: ${parsed}`)
+                    console.error(`${this.id}: ${JSON.stringify(msg)}`)
                 }
                 if (parsed.type == 'canvas.alert' && parsed.msg.contains('disabled')) {
                     var time = parseInt(parsed.msg.split(':')[1])

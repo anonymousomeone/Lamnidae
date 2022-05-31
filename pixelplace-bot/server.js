@@ -3,6 +3,7 @@ var http = require('http');
 
 class Server {
     init() {
+        const that = this
         var server = http.createServer(function(request, response) {
             console.log((new Date()) + ' Received request for ' + request.url);
             response.writeHead(404);
@@ -36,24 +37,26 @@ class Server {
                 console.log(message)
                 if (message.type === 'utf8') {
                     console.log('Received Message: ' + message.utf8Data);
-                    connection.sendUTF(message.utf8Data);
-                }
-                else if (message.type === 'binary') {
-                    console.log('Received Binary Message of ' + message.binaryData.length + ' bytes');
-                    connection.sendBytes(message.binaryData);
+                    that.parseMessage(message.utf8Data)
                 }
             });
             connection.on('close', function(reasonCode, description) {
                 console.log((new Date()) + ' Peer ' + connection.remoteAddress + ' disconnected.\n'+ reasonCode + ': ' + description);
             });
         });
+    }
 
+    parseMessage(msg) {
+        var command = msg.split(' ')[0]
+        var args = msg.slice(command.length)
+
+        console.log(command + ' / ' + args)
     }
 }
 
 
 function originIsAllowed(origin) {
-    // if (origin !== "https://pixelplace.io" && origin !== "http://pixelplace.io") return false
+    if (origin !== "https://pixelplace.io" && origin !== "http://pixelplace.io") return false
     // put logic here to detect whether the specified origin is allowed.
     return true;
 }

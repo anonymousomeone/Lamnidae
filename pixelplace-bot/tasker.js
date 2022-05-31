@@ -18,7 +18,7 @@ class TaskManager extends EventEmitter {
 
         // set to lower value when "griefing"
         this.griefing = false
-        this.wait = 200
+        this.wait = 25
 
         this.cache = []
         this.pcache = []
@@ -33,7 +33,7 @@ class TaskManager extends EventEmitter {
 
         var arr = []
 
-        await image.scan(0, 0, image.bitmap.width, image.bitmap.height, function(x, y, idx) {
+        image.scan(0, 0, image.bitmap.width, image.bitmap.height, function(x, y, idx) {
             var red = this.bitmap.data[idx + 0];
             var green = this.bitmap.data[idx + 1];
             var blue = this.bitmap.data[idx + 2];
@@ -116,6 +116,8 @@ class TaskManager extends EventEmitter {
     }
     
     parseImage(img) {
+        console.log(`Processing ${img}`)
+        var date = Date.now()
         return new Promise(async (resolve, reject) => {
             await Jimp.read(img, (err, image) => {
                 var arr = []
@@ -137,6 +139,7 @@ class TaskManager extends EventEmitter {
                 // make a local array so we can do operations like randomize pixel placements without modifying the task queue
                 this.maintain.push(...res)
                 // console.log('done')
+                console.log(`Processed in ${Date.now() - date}ms`)
                 resolve()
             })
         })
