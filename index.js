@@ -4,92 +4,71 @@ const LoginManager = require('./pixelplace-bot/login.js')
 const Client = require('./pixelplace-bot/bot.js')
 const TaskManager = require('./pixelplace-bot/tasker.js')
 const Server = require('./pixelplace-bot/server.js')
-const QRCode = require('qrcode')
-const { createCanvas } = require('canvas')
-var canvas = createCanvas(200, 200)
-const ctx = canvas.getContext('2d')
 
-QRCode.toCanvas(canvas, 'text', { errorCorrectionLevel: 'H'}).then(cv => {
-    var context = cv.getContext('2d')
-    var data = context.getImageData(0, 0, 1, 1).data;
-    var rgb = [ data[0], data[1], data[2] ];
-    console.log(data)
-    while (true) {/* hehehaw */}
-})
+const login = new LoginManager(users)
+const task = new TaskManager()
+const server = new Server(task)
+server.init()
 
-// var readline = require('readline');
-// var rl = readline.createInterface({
-//     input: process.stdin,
-//     output: process.stdout
-// });
+// TODO: make desktop app with electron.js because hehehehaw
+// so it better than bababot
+// https://www.electronjs.org/
 
-// const login = new LoginManager(users)
-// const task = new TaskManager()
-// const server = new Server(task)
-// server.init()
+const sleep = ms => new Promise( res => setTimeout(res, ms));
 
-// // TODO: make desktop app with electron.js because hehehehaw
-// // so it better than bababot
-// // https://www.electronjs.org/
+(async () => {
+    console.log(`Initializing on ${boardId}`)
+    await task.init(boardId)
+    // task.grief(1731, 500, 2030, 799, 20)
+    // var len = task.canvas.length - 1
+    // console.log(task.canvas[len][task.canvas[len].length - 1][1])
+    // task.drawBorder(960, 1550, 536, 640, 36, 2)
+    // task.rainbowDrawBorder(2, 2, 2497, 2085, 2)
+    // console.log(task.tasks.length)
+    // console.log(task.tasks.length)
+    // task.place(1604, 484)
 
-// const sleep = ms => new Promise( res => setTimeout(res, ms));
-
-// (async () => {
-//     console.log(`Initializing on ${boardId}`)
-//     await task.init(boardId)
-//     // task.grief(1731, 500, 2030, 799, 20)
-//     // var len = task.canvas.length - 1
-//     // console.log(task.canvas[len][task.canvas[len].length - 1][1])
-//     // task.drawBorder(960, 1550, 536, 640, 36, 2)
-//     // task.rainbowDrawBorder(2, 2, 2497, 2085, 2)
-//     // console.log(task.tasks.length)
-//     // console.log(task.tasks.length)
-//     // task.place(1604, 484)
-
-//     // await task.parseImage('test.png')
-//     // task.place(2800, 0)
-//     var users = await login.start()
-//     if (users.length == 0) {console.error('no bots (skill issue)'); process.exit(1)}
-//     task.wait = 25 // delay between ticks
-//     for (var i = 0; i < users.length; i++) {
-//         var client = new Client(users[i], i, boardId, task)
+    // await task.parseImage('test.png')
+    // task.place(2800, 0)
+    var users = await login.start()
+    if (users.length == 0) {console.error('no bots (skill issue)'); process.exit(1)}
+    task.wait = 25 // delay between ticks
+    for (var i = 0; i < users.length; i++) {
+        var client = new Client(users[i], i, boardId, task)
         
-//         await client.init().then((id) => {
-//             if (id == users.length - 1) { 
-//                 task.emit('ready'); 
-//             }
-//         })
-//     }
+        await client.init().then((id) => {
+            if (id == users.length - 1) { 
+                task.emit('ready'); 
+            }
+        })
+    }
 
-//     setInterval(() => {
-//         // var hx = 1800
-//         // var lx = 1500
+    setInterval(() => {
+        // var hx = 1800
+        // var lx = 1500
 
-//         // var hy = 1600
-//         // var ly = 1400
-//         // for (var i = 0; i < task.bots.length; i++) {
-//         //     task.amogifier(Math.floor(Math.random() * (hx - lx)) + lx, Math.floor(Math.random() * (hy - ly) + ly))
-//         // }
+        // var hy = 1600
+        // var ly = 1400
+        // for (var i = 0; i < task.bots.length; i++) {
+        //     task.amogifier(Math.floor(Math.random() * (hx - lx)) + lx, Math.floor(Math.random() * (hy - ly) + ly))
+        // }
 
-//         var pps = 0
-//         for (var i = 0; i < task.bots.length; i++) {
-//             pps += task.bots[i].pps
-//             task.bots[i].pps = 0
-//         }
-//         var completion = (task.tasks.length / pps)
-//         console.log(`Pixels remaining: ${task.tasks.length}\nEst. time to completion: ${completion ?? 0} seconds\nPPS: ${pps}\n${task.pcache.length} / ${task.cache.length}`)
-//         // console.log(`${task.cache.length} / ${task.pcache.length}`)
-//     }, 1000)
-// })();
+        var pps = 0
+        for (var i = 0; i < task.bots.length; i++) {
+            pps += task.bots[i].pps
+            task.bots[i].pps = 0
+        }
+        var completion = (task.tasks.length / pps)
+        console.log(`Pixels remaining: ${task.tasks.length}\nEst. time to completion: ${completion == NaN ? completion : 0} seconds\nPPS: ${pps}\n${task.pcache.length} / ${task.cache.length}`)
+        // console.log(`${task.cache.length} / ${task.pcache.length}`)
+    }, 1000)
+})();
 
-// task.on('ready', async () => {
-//     console.log('all systems are go!')
-//     await task.parseImage('test.png')
-//     // task.place(723, 140)
-//     task.place(2800, 0)
-//     task.ticker()
-// })
-
-// rl.on('line', function(line){
-//     console.log(line);
-// })
+task.on('ready', async () => {
+    console.log('all systems are go!')
+    // await task.parseImage('test.png')
+    // task.place(723, 140)
+    // task.place(2800, 0)
+    await task.qrCode(2500, 10, 'sussy baka')
+    task.ticker()
+})

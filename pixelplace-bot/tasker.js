@@ -1,6 +1,9 @@
 const Jimp = require('jimp')
-const { cdict, colors } = require('./cdict.json');
 const EventEmitter = require('events');
+const { cdict, colors } = require('./cdict.json');
+
+const { createCanvas } = require('canvas')
+const QRCode = require('qrcode')
 
 class TaskManager extends EventEmitter {
     constructor() {
@@ -23,6 +26,11 @@ class TaskManager extends EventEmitter {
         this.cache = []
         this.pcache = []
     }
+    /*
+                   ===========================================================================
+    core functions ===========================================================================
+                   ===========================================================================
+    */ 
     async init(id) {
         console.log('Processing canvas')
         var ms = Date.now()
@@ -47,72 +55,6 @@ class TaskManager extends EventEmitter {
         })
         console.log(`Processed in ${Date.now() - ms}ms`)
         // format: canvas[y][x]
-    }
-    drawRect(x, y, w, h, c) {
-        // time complexity be goin through the roof (real)
-        for (var a = 0; a < w; a++) {
-            for (var b = 0; b < h; b++) {
-                this.tasks.push([x + a, y + b, c])
-            }
-        }
-        this.emit('update')
-    }
-
-    amogifier(x, y) {
-        var amogugugugugus = [['.', '$', '$', '$'],
-                              ['%', '$', '#', '#'],
-                              ['%', '$', '$', '$'],
-                              ['.', '$', '.', '$']]
-
-        var moaayi = [['#', '#', '#', '#'],
-                      ['.', '#', '#', '.'],
-                      ['.', '#', '#', '.'],
-                      ['.', '#', '#', '.'],
-                      ['.', '.', '.', '.'],
-                      ['.', '#', '#', '.'],
-                      ['.', '.', '.', '.']]
-
-        for (var i = 0; i < amogugugugugus.length; i++) {
-            for (var z = 0; z < amogugugugugus[i].length; z++) {
-                if (amogugugugugus[i][z] == '.') continue
-                if (amogugugugugus[i][z] == '#') this.tasks.push([z + x, i + y, 37])
-                if (amogugugugugus[i][z] == '%') this.tasks.push([z + x, i + y, 19])
-                else this.tasks.push([z + x, i + y, 20])
-            }
-        }
-    }
-
-    // draw rect but only within b pixels of border
-    drawBorder(x, y, w, h, c, b) {
-        for (var i = 0; i < w; i++) {
-            for (var z = 0; z < h; z++) {
-                if (this.border(x + z, y + i, b) && !this.check(this.cdictRgb(c), x + z, y + i)) {
-                    this.tasks.push([x + z, y + i, c])
-                    // console.log(place(x + z, y + i, c))
-                }
-            }
-        }
-    }
-
-    // like draw border, but rainbow!!!
-    rainbowDrawBorder(x, y, x2, y2, b) {
-        var w = x2 - x
-        var h = y2 - y
-        var col = 0
-        for (var i = 0; i < h; i++) {
-            for (var z = 0; z < w; z++) {
-                if (this.border(x + z, y + i, b) && !this.background(x + z, y + i)) {
-                    for (var k = 0; k < cdict.length; k++) {
-                        if (cdict[k].every((v, i) => v === colors[col][i]) && !this.check(this.cdictRgb(k), x + z, y + i)) {
-                            this.tasks.push([x + z, y + i, k])
-                        }
-                    }
-                    col++
-                    if (colors.length <= col) col = 0
-                    // console.log(place(x + z, y + i, c))
-                }
-            }
-        }
     }
     
     parseImage(img) {
@@ -180,16 +122,7 @@ class TaskManager extends EventEmitter {
         return this.canvas[y][x][2].every((val, index) => val === [204, 204, 204][index])
     }
 
-    grief(x, y, x2, y2, c) {
-        this.griefing = true
-        this.x = x
-        this.y = y
-        // why do math, when you can have the code do it for you?
-        this.w = x2 - x
-        this.h = y2 - y
-        this.color = c
-    }
-
+    
     pHandler(msg) {
         if (this.maintain[0] == undefined) return
         if (this.maintain[0][0] == undefined) return
@@ -226,7 +159,7 @@ class TaskManager extends EventEmitter {
             }
         }
     }
-
+    
     // rgb value to pixelplace color int (no quantisizing)
     rgbCdict(rgb) {
         for (var i = 0; i < cdict.length; i++) {
@@ -239,6 +172,23 @@ class TaskManager extends EventEmitter {
     // inverse of rgbCdict()
     cdictRgb(i) {
         return cdict[i]
+    }
+
+    // TODO: move these to seperate files (like in discord bots?)
+    /*
+                   ===========================================================================
+    misc functions ===========================================================================
+                   ===========================================================================
+    */ 
+    
+    grief(x, y, x2, y2, c) {
+        this.griefing = true
+        this.x = x
+        this.y = y
+        // why do math, when you can have the code do it for you?
+        this.w = x2 - x
+        this.h = y2 - y
+        this.color = c
     }
 
     /**
@@ -272,24 +222,98 @@ class TaskManager extends EventEmitter {
         return false
     }
 
-    prune() {
-        for (var i = 0; i < this.cache.length; i++) {
-            for (var x = 0; x < this.cache.length; x++) {
-                if (this.cache[i].every((v, i) => v === this.cache[x][i] || i == 4) && x != i) this.cache.splice(x, 1)
+    drawRect(x, y, w, h, c) {
+        // time complexity be goin through the roof (real)
+        for (var a = 0; a < w; a++) {
+            for (var b = 0; b < h; b++) {
+                this.tasks.push([x + a, y + b, c])
+            }
+        }
+        this.emit('update')
+    }
+
+    amogifier(x, y) {
+        var amogugugugugus = [['.', '$', '$', '$'],
+                              ['%', '$', '#', '#'],
+                              ['%', '$', '$', '$'],
+                              ['.', '$', '.', '$']]
+
+        var moaayi = [['#', '#', '#', '#'],
+                      ['.', '#', '#', '.'],
+                      ['.', '#', '#', '.'],
+                      ['.', '#', '#', '.'],
+                      ['.', '.', '.', '.'],
+                      ['.', '#', '#', '.'],
+                      ['.', '.', '.', '.']]
+
+        for (var i = 0; i < amogugugugugus.length; i++) {
+            for (var z = 0; z < amogugugugugus[i].length; z++) {
+                if (amogugugugugus[i][z] == '.') continue
+                if (amogugugugugus[i][z] == '#') this.tasks.push([z + x, i + y, 37])
+                if (amogugugugugus[i][z] == '%') this.tasks.push([z + x, i + y, 19])
+                else this.tasks.push([z + x, i + y, 20])
             }
         }
     }
 
-    // stackunderflow moment
-    exists(arr, item){
-        var item_as_string = JSON.stringify([item[0], item[1], item[2]]);
+    // draw rect but only within b pixels of border
+    drawBorder(x, y, w, h, c, b) {
+        for (var i = 0; i < w; i++) {
+            for (var z = 0; z < h; z++) {
+                if (this.border(x + z, y + i, b) && !this.check(this.cdictRgb(c), x + z, y + i)) {
+                    this.tasks.push([x + z, y + i, c])
+                    // console.log(place(x + z, y + i, c))
+                }
+            }
+        }
+    }
 
-        var contains = arr.some(function(ele){
-            return JSON.stringify(ele).includes(item_as_string)
-        });
+    // like draw border, but rainbow!!!
+    rainbowDrawBorder(x, y, x2, y2, b) {
+        var w = x2 - x
+        var h = y2 - y
+        var col = 0
+        for (var i = 0; i < h; i++) {
+            for (var z = 0; z < w; z++) {
+                if (this.border(x + z, y + i, b) && !this.background(x + z, y + i)) {
+                    for (var k = 0; k < cdict.length; k++) {
+                        if (cdict[k].every((v, i) => v === colors[col][i]) && !this.check(this.cdictRgb(k), x + z, y + i)) {
+                            this.tasks.push([x + z, y + i, k])
+                        }
+                    }
+                    col++
+                    if (colors.length <= col) col = 0
+                    // console.log(place(x + z, y + i, c))
+                }
+            }
+        }
+    }
 
-        return contains;
-      }
+    async qrCode(x, y, text, scale='4') {
+        const canvas = createCanvas(1, 1)
+
+        const opts = { errorCorrectionLevel: 'H', margin: '1', scale: scale}
+        const cv = await QRCode.toCanvas(canvas, text, opts)
+        const context = cv.getContext('2d')
+        
+        const data = context.getImageData(0, 0, cv.width, cv.height);
+        const arr = sliceIntoChunks(data.data, cv.width * 4)
+        
+        // console.log(arr)
+        for (var i = 0; i < arr.length; i++) {
+            // 4 cus Uint8ClampedArray is [r, g, b, a, r, g, b, a ...]
+            var x2 = 0
+            for (var z = 0; z < arr[i].length; z += 4) {
+                const r = arr[i][z]
+    
+                if (!this.check([arr[i][z], arr[i][z + 1], arr[i][z + 2]], x2 + x, i + y)) {
+                    // ternary operator moment
+                    this.tasks.push(r == 0 ? [x2 + x, i + y, 5] : [x2 + x, i + y, 0])
+                }
+                x2++;
+            }
+        }
+    }
 }
 
 function findColor(rgb) {
@@ -364,4 +388,12 @@ function parseMessage(msg) {
     return { id: id, type: type, msg: message }
 }
 
+function sliceIntoChunks(arr, chunkSize) {
+    const res = [];
+    for (let i = 0; i < arr.length; i += chunkSize) {
+        const chunk = arr.slice(i, i + chunkSize);
+        res.push(chunk);
+    }
+    return res;
+}
 module.exports = TaskManager

@@ -92,9 +92,12 @@ class Bot {
                     this.abort('authError (skill issue)')
                 } else if (parsed.type == 'throw.error' && parsed.msg == '4') {
                     this.abort('premium color error')
+                } else if (parsed.type == 'throw.error' && parsed.msg == '5') {
+                    this.abort('out of bounds error')
                 } else if (parsed.type == 'throw.error') {
                     console.error(`${this.id}: ${JSON.stringify(msg)}`)
                 }
+
                 if (parsed.type == 'canvas.alert' && parsed.msg.contains('disabled')) {
                     var time = parseInt(parsed.msg.split(':')[1])
                     this.abort(`you just got assfucked by a moderator for ${time} minutes`)
