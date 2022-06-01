@@ -1,6 +1,9 @@
 const Jimp = require('jimp')
-const { cdict, colors } = require('./cdict.json');
 const EventEmitter = require('events');
+const { cdict, colors } = require('./cdict.json');
+
+const { createCanvas } = require('canvas')
+const QRCode = require('qrcode')
 
 class TaskManager extends EventEmitter {
     constructor() {
@@ -18,11 +21,16 @@ class TaskManager extends EventEmitter {
 
         // set to lower value when "griefing"
         this.griefing = false
-        this.wait = 200
+        this.wait = 25
 
         this.cache = []
         this.pcache = []
     }
+    /*
+                   ===========================================================================
+    core functions ===========================================================================
+                   ===========================================================================
+    */ 
     async init(id) {
         console.log('Processing canvas')
         var ms = Date.now()
@@ -33,7 +41,7 @@ class TaskManager extends EventEmitter {
 
         var arr = []
 
-        await image.scan(0, 0, image.bitmap.width, image.bitmap.height, function(x, y, idx) {
+        image.scan(0, 0, image.bitmap.width, image.bitmap.height, function(x, y, idx) {
             var red = this.bitmap.data[idx + 0];
             var green = this.bitmap.data[idx + 1];
             var blue = this.bitmap.data[idx + 2];
@@ -48,17 +56,10 @@ class TaskManager extends EventEmitter {
         console.log(`Processed in ${Date.now() - ms}ms`)
         // format: canvas[y][x]
     }
-    drawRect(x, y, w, h, c) {
-        // time complexity be goin through the roof (real)
-        for (var a = 0; a < w; a++) {
-            for (var b = 0; b < h; b++) {
-                this.tasks.push(place(x + a, y + b, c))
-            }
-        }
-        this.emit('update')
-    }
     
     parseImage(img) {
+        console.log(`Processing ${img}`)
+        var date = Date.now()
         return new Promise(async (resolve, reject) => {
             await Jimp.read(img, (err, image) => {
                 var arr = []
@@ -68,9 +69,10 @@ class TaskManager extends EventEmitter {
                     var red = this.bitmap.data[idx + 0];
                     var green = this.bitmap.data[idx + 1];
                     var blue = this.bitmap.data[idx + 2];
+                    var alpha = this.bitmap.data[idx + 3];
                     var rgb = findColor([red, green, blue])
 
-                    arr.push([x, y, rgb])
+                    if (alpha != 0) arr.push([x, y, rgb])
                     if (x >= image.bitmap.width - 1) {
                         res.push(arr);
                         arr = [];
@@ -79,6 +81,7 @@ class TaskManager extends EventEmitter {
                 // make a local array so we can do operations like randomize pixel placements without modifying the task queue
                 this.maintain.push(...res)
                 // console.log('done')
+                console.log(`Processed in ${Date.now() - date}ms`)
                 resolve()
             })
         })
@@ -92,86 +95,50 @@ class TaskManager extends EventEmitter {
                 console.error('TASKER: no bots?\ninsert megamind meme here')
                 // process.exit(1)
             }
+            
             for (var i = 0; i < this.bots.length; i++) {
                 if (this.griefing && !this.paused) {
                     var x = Math.floor(Math.random() * this.w) + this.x
                     var y = Math.floor(Math.random() * this.h) + this.y
-                    if (!this.check(this.color, x, y)) {
-                        this.tasks.push(place(x, y, this.color))
-                    }
+                    // if (!this.check(this.color, x, y)) {
+                        this.tasks.push([x, y, this.color])
+                    // }
                 }
                 if (!this.paused && this.tasks.length != 0) {
                     this.bots[i].tick(this.tasks[0])
                     this.tasks.shift()
                 }
             }
+
         }, this.wait)
-
-        setInterval(() => {
-            for (var x = 0; x < this.pcache.length; x++) {
-                var pixel = parseMessage(this.pcache[x].pixel)
-                if ((Date.now() - this.pcache[x].time) > 500) {
-                    this.tasks.push(place(pixel.msg[0], pixel.msg[1], pixel.msg[2]))
-                    this.pcache.splice(x, 1)
-                }
-            }
-
-            for (var i = 0; i < this.cache.length; i++) {
-                for (var y = 0; y < this.cache[i].length; y++) {
-                    if (this.cache[i][y].length != 5) continue
-                    
-                    for (var x = 0; x < this.pcache.length; x++) {
-                        var pixel = parseMessage(this.pcache[x].pixel)
-                        if (pixel.msg[0] != this.cache[i][y][0]) continue
-                        if (pixel.msg[1] != this.cache[i][y][1]) continue
-                        if (pixel.msg[3] != this.cache[i][y][3]) continue
-                        this.pcache.splice(x, 1)
-                    }
-                }
-            }
-
-            for (var i = 0; i < this.cache.length; i++) {
-                if (!this.griefing) {
-                    this.pHandler(this.cache[i])
-                    this.cache.shift()
-                }
-            }
-        }, 20)
     }
 
     check(rgb, x, y) {
         return rgb.every((val, index) => val === findColor(this.canvas[y][x][2])[index]) || this.canvas[y][x][2].every((val, index) => val === [204, 204, 204][index])
     }
 
-    grief(x, y, x2, y2, c) {
-        this.griefing = true
-        this.x = x
-        this.y = y
-        // why do math, when you can have the code do it for you?
-        this.w = x2 - x
-        this.h = y2 - y
-        this.color = c
+    // check if pixel is background
+    background(x, y) {
+        return this.canvas[y][x][2].every((val, index) => val === [204, 204, 204][index])
     }
 
+    
     pHandler(msg) {
+        if (this.maintain[0] == undefined) return
+        if (this.maintain[0][0] == undefined) return
         // me when math 😭😭😭
         var len = this.maintain.length - 1
         var minx = this.maintain[0][0][0] + this.x
         var miny = this.maintain[0][0][1] + this.y
         var maxx = this.maintain[len][this.maintain[len].length - 1][0] + this.x
         var maxy = this.maintain[len][this.maintain[len].length - 1][1] + this.y
-
-        
-        for (var i = 0; i < msg.length; i++) {
             
-            if (msg[i][0] >= minx && msg[i][1] >= miny) {
-                if (msg[i][0] < maxx && msg[i][1] < maxy) {
-                    
-                    if (msg[i][2] != this.rgbCdict(this.maintain[msg[i][1] - this.y] [msg[i][0] - this.x] [2])) {
-                        if (this.tasks.indexOf(msg[i]) == -1) {
-                            this.tasks.push(place(msg[i][0], msg[i][1], this.rgbCdict(this.maintain[msg[i][1] - this.y][msg[i][0] - this.x][2])))
-                        }
-                    }
+        if (msg[0] >= minx && msg[1] >= miny) {
+            if (msg[0] < maxx && msg[1] < maxy) {
+                // console.log(this.rgbCdict(this.maintain[msg[i][1] - this.y] [msg[i][0] - this.x] [2]))
+                
+                if (msg[2] != this.rgbCdict(this.maintain[msg[1] - this.y] [msg[0] - this.x] [2])) {
+                    this.tasks.push([msg[0], msg[1], this.rgbCdict(this.maintain[msg[1] - this.y][msg[0] - this.x][2])])
                 }
             }
         }
@@ -185,14 +152,15 @@ class TaskManager extends EventEmitter {
                 if (!this.check(this.maintain[y2][x2][2], x + x2, y + y2)) {
                     for (var i = 0; i < cdict.length; i++) {
                         if (cdict[i].every((val, index) => val === this.maintain[y2][x2][2][index])) {
-                            this.tasks.push(place(this.maintain[y2][x2][0] + x, this.maintain[y2][x2][1] + y, i))
+                            this.tasks.push([this.maintain[y2][x2][0] + x, this.maintain[y2][x2][1] + y, this.rgbCdict(this.maintain[y2][x2][2])])
                         }
                     }
                 }
             }
         }
     }
-
+    
+    // rgb value to pixelplace color int (no quantisizing)
     rgbCdict(rgb) {
         for (var i = 0; i < cdict.length; i++) {
             if (cdict[i].every((val, index) => val === rgb[index])) {
@@ -201,15 +169,151 @@ class TaskManager extends EventEmitter {
         }
     }
 
-    // TODO: finish
-    // for Pallete (0vC4#7152) :)
-    border(x, y) {
-        // asdsda
+    // inverse of rgbCdict()
+    cdictRgb(i) {
+        return cdict[i]
     }
-}
 
-function place(x, y, color) {
-    return `42["p",[${x},${y},${color},1]]`
+    // TODO: move these to seperate files (like in discord bots?)
+    /*
+                   ===========================================================================
+    misc functions ===========================================================================
+                   ===========================================================================
+    */ 
+    
+    grief(x, y, x2, y2, c) {
+        this.griefing = true
+        this.x = x
+        this.y = y
+        // why do math, when you can have the code do it for you?
+        this.w = x2 - x
+        this.h = y2 - y
+        this.color = c
+    }
+
+    /**
+     * check if pixel is within ```w``` pixels of a [204, 204, 204] pixel
+     * 
+     * for Pallete (0vC4#7152) :)
+     * 
+     * help my balls have rusted shut due to logic
+     * @param {Integer} x 
+     * @param {Integer} y 
+     * @param {Integer} w width
+     * @returns {Boolean} true/false
+     */
+    border(x, y, w) {
+        w++
+        // me when the O(n^2)
+        for (var i = 0; i < w; i++) {
+            for (var z = 0; z < w; z++) {
+                if (this.canvas[y + z][x + i][2].every((v, i) => v === [204, 204, 204][i]) && !this.canvas[y][x][2].every((v,i)=>v===[204,204,204][i])) return true
+            }
+            for (var z = 0; z < w; z++) {
+                if (this.canvas[y + z][x - i][2].every((v, i) => v === [204, 204, 204][i]) && !this.canvas[y][x][2].every((v,i)=>v===[204,204,204][i])) return true
+            }
+            for (var z = 0; z < w; z++) {
+                if (this.canvas[y - z][x + i][2].every((v, i) => v === [204, 204, 204][i]) && !this.canvas[y][x][2].every((v,i)=>v===[204,204,204][i])) return true
+            }
+            for (var z = 0; z < w; z++) {
+                if (this.canvas[y - z][x - i][2].every((v, i) => v === [204, 204, 204][i]) && !this.canvas[y][x][2].every((v,i)=>v===[204,204,204][i])) return true
+            }
+        }
+        return false
+    }
+
+    drawRect(x, y, w, h, c) {
+        // time complexity be goin through the roof (real)
+        for (var a = 0; a < w; a++) {
+            for (var b = 0; b < h; b++) {
+                this.tasks.push([x + a, y + b, c])
+            }
+        }
+        this.emit('update')
+    }
+
+    amogifier(x, y) {
+        var amogugugugugus = [['.', '$', '$', '$'],
+                              ['%', '$', '#', '#'],
+                              ['%', '$', '$', '$'],
+                              ['.', '$', '.', '$']]
+
+        var moaayi = [['#', '#', '#', '#'],
+                      ['.', '#', '#', '.'],
+                      ['.', '#', '#', '.'],
+                      ['.', '#', '#', '.'],
+                      ['.', '.', '.', '.'],
+                      ['.', '#', '#', '.'],
+                      ['.', '.', '.', '.']]
+
+        for (var i = 0; i < amogugugugugus.length; i++) {
+            for (var z = 0; z < amogugugugugus[i].length; z++) {
+                if (amogugugugugus[i][z] == '.') continue
+                if (amogugugugugus[i][z] == '#') this.tasks.push([z + x, i + y, 37])
+                if (amogugugugugus[i][z] == '%') this.tasks.push([z + x, i + y, 19])
+                else this.tasks.push([z + x, i + y, 20])
+            }
+        }
+    }
+
+    // draw rect but only within b pixels of border
+    drawBorder(x, y, w, h, c, b) {
+        for (var i = 0; i < w; i++) {
+            for (var z = 0; z < h; z++) {
+                if (this.border(x + z, y + i, b) && !this.check(this.cdictRgb(c), x + z, y + i)) {
+                    this.tasks.push([x + z, y + i, c])
+                    // console.log(place(x + z, y + i, c))
+                }
+            }
+        }
+    }
+
+    // like draw border, but rainbow!!!
+    rainbowDrawBorder(x, y, x2, y2, b) {
+        var w = x2 - x
+        var h = y2 - y
+        var col = 0
+        for (var i = 0; i < h; i++) {
+            for (var z = 0; z < w; z++) {
+                if (this.border(x + z, y + i, b) && !this.background(x + z, y + i)) {
+                    for (var k = 0; k < cdict.length; k++) {
+                        if (cdict[k].every((v, i) => v === colors[col][i]) && !this.check(this.cdictRgb(k), x + z, y + i)) {
+                            this.tasks.push([x + z, y + i, k])
+                        }
+                    }
+                    col++
+                    if (colors.length <= col) col = 0
+                    // console.log(place(x + z, y + i, c))
+                }
+            }
+        }
+    }
+
+    async qrCode(x, y, text, scale='4') {
+        const canvas = createCanvas(1, 1)
+
+        const opts = { errorCorrectionLevel: 'H', margin: '1', scale: scale}
+        const cv = await QRCode.toCanvas(canvas, text, opts)
+        const context = cv.getContext('2d')
+        
+        const data = context.getImageData(0, 0, cv.width, cv.height);
+        const arr = sliceIntoChunks(data.data, cv.width * 4)
+        
+        // console.log(arr)
+        for (var i = 0; i < arr.length; i++) {
+            // 4 cus Uint8ClampedArray is [r, g, b, a, r, g, b, a ...]
+            var x2 = 0
+            for (var z = 0; z < arr[i].length; z += 4) {
+                const r = arr[i][z]
+    
+                if (!this.check([arr[i][z], arr[i][z + 1], arr[i][z + 2]], x2 + x, i + y)) {
+                    // ternary operator moment
+                    this.tasks.push(r == 0 ? [x2 + x, i + y, 5] : [x2 + x, i + y, 0])
+                }
+                x2++;
+            }
+        }
+    }
 }
 
 function findColor(rgb) {
@@ -284,4 +388,12 @@ function parseMessage(msg) {
     return { id: id, type: type, msg: message }
 }
 
+function sliceIntoChunks(arr, chunkSize) {
+    const res = [];
+    for (let i = 0; i < arr.length; i += chunkSize) {
+        const chunk = arr.slice(i, i + chunkSize);
+        res.push(chunk);
+    }
+    return res;
+}
 module.exports = TaskManager

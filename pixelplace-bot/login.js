@@ -1,19 +1,23 @@
 const puppeteer = require('puppeteer');
 const fs = require('fs')
 const UserAgent = require('user-agents')
+const https = require('node:https')
+const { boardId } = require('../config.json')
 
 class LoginManager {
     constructor(users) {
         this.users = users
     }
 
-    async login(id) {
+    async login(user) {
         try {
-            var user = this.users[id]
             console.log(`trying to login as: ${user.name}`)
             var page = await this.browser.newPage()
 
             await page.goto('https://pixelplace.io/', { timeout: 60000 });
+
+            await this.sleep(300)
+            
             await page.waitForSelector('.desktop', {hidden: false, timeout: 50000})
 
             // be absolutely sure we are loaded
@@ -43,8 +47,11 @@ class LoginManager {
                 })
                 btn.dispatchEvent(clickEvent)
             }, user)
-
+            
+            // sometimes skips captcha for some reason
+            await this.sleep(1000)
             await page.waitForSelector('#recaptcha', {hidden: false, timeout: 10000})
+            await this.sleep(1000)
             // 50 seconds to solve a captcha seems enough
             await page.waitForSelector('#recaptcha', {hidden: true, timeout: 50000})
             
@@ -66,7 +73,9 @@ class LoginManager {
             console.log('logged in!')
             await page.close()
 
-            this.users[id] = user
+            this.users[user.id] = user
+            await this.join(user)
+            await this.sleep(200)
             return user
         } catch(e) {
             console.error(`you just got skill issued by: ${e}`)
@@ -75,17 +84,22 @@ class LoginManager {
     
     async start() {
         var toLogin = []
+        var loggedin = []
         for (var i = 0; i < this.users.length; i++) {
-            if (!('time' in this.users[i])) continue
-            // check if auth thingies are still valid, and only ask to login for invalids
-            // TODO: get actual auth timeout time
-            // note: trying to authenticate again without it expiring breaks everything
-            if (Date.now() - this.users[i].time > 3600000) {
-                toLogin.push(i)
+            this.users[i].id = i
+            var res = await this.join(this.users[i])
+            const regexp = /=([^;]*);/;
+            if (res.headers.hasOwnProperty("set-cookie")) {
+                if (!res.headers["set-cookie"][0].includes('deleted')) {
+                    this.users[i].authId = regexp.exec(res.headers["set-cookie"][0])[1]
+                    this.users[i].authKey = regexp.exec(res.headers["set-cookie"][1])[1]
+                    this.users[i].authToken = regexp.exec(res.headers["set-cookie"][2])[1]
+                }
             }
+            if (res.user.connected) { loggedin.push(this.users[i]) }
+            else { toLogin.push(this.users[i]) }
         }
         
-        var loggedin = []
         if (toLogin.length > 0) {
             try {
                 // console.log("Opening the browser......");
@@ -118,7 +132,6 @@ class LoginManager {
             await this.browser.close()
         } else {
             console.log('Skipping login')
-            loggedin.push(...this.users)
         }
 
         var json = {}
@@ -126,9 +139,43 @@ class LoginManager {
         fs.writeFileSync('./token.json', JSON.stringify(json, null, 2))
         // console.log(this.users)
         // console.log(loggedin)
-        return loggedin
+        return this.users
 }
     sleep = ms => new Promise( res => setTimeout(res, ms));
+
+    join(user) {
+        return new Promise((resolve, reject) => {
+            const options = {
+                hostname: 'pixelplace.io',
+                port: 443,
+                path: `/api/get-painting.php?id=${boardId}&connected=1`,
+                method: 'GET',
+                headers: {
+                    cookie: this.buildCookie(user)
+                }
+              };
+              var json = ""
+              const req = https.request(options, res => {
+                res.on('data', d => {
+                    json += d.toString()
+                    try {
+                        json = JSON.parse(json)
+                        json.headers = res.headers
+                        resolve(json)
+                    } catch(e) {/* hehehehaw */}
+                });
+              });
+              
+              req.on('error', error => {
+                console.error(error);
+              });
+              
+              req.end();
+        })
+    }
+    buildCookie(user) {
+        return `authId=${user.authId}; authKey=${user.authKey}; authToken=${user.authToken}`
+    }
 }
 
 // const { users } = require('../token.json')
