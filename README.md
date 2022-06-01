@@ -13,7 +13,7 @@ cry about it
 
 # usage
 1. put image in directory
-2. go to [line 20](https://github.com/anonymousomeone/pixelplaceio-bot/blob/main/index.js#L20) and change image name and xy coords
+2. go to [line 69 (nice)](https://github.com/anonymousomeone/Lamnidae/blob/main/index.js#L69) and change image name and xy coords
 3. change [boardId](https://github.com/anonymousomeone/pixelplaceio-bot/blob/main/config.json#L2) in config.json
-4. put password and email for bots in token.json
+4. put password and email for bots in token.json (you have to make the file first)
 5. do `node index.js` and it should work
