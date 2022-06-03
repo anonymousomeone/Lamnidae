@@ -8,11 +8,10 @@ const Server = require('./pixelplace-bot/server.js')
 const login = new LoginManager(users)
 const task = new TaskManager()
 const server = new Server(task)
+
 server.init()
 
-// TODO: make desktop app with electron.js because hehehehaw
-// so it better than bababot
-// https://www.electronjs.org/
+// TODO: finish lamnidae-extension gui
 
 const sleep = ms => new Promise( res => setTimeout(res, ms));
 
@@ -69,6 +68,6 @@ task.on('ready', async () => {
     // await task.parseImage('test.png')
     // task.place(723, 140)
     // task.place(2800, 0)
-    await task.qrCode(2500, 10, 'sussy baka')
+    await task.qrCode(866, 518, 'sussy baka', '1')
     task.ticker()
 })

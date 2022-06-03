@@ -1,7 +1,16 @@
-const fs = require('fs')
+const fs = require('fs');
+const TaskManager = require('./tasker');
 const WebSocketClient = require('websocket').client;
 
 class Client {
+    /**
+     * initialize new client
+     * 
+     * @param {Object} userJson 
+     * @param {Integer} id client id
+     * @param {Integer} boardid painting id
+     * @param {TaskManager} tasker taskmanager
+     */
     constructor(userJson, id, boardid, tasker) {
         this.userJson = userJson
         this.id = id
@@ -9,6 +18,11 @@ class Client {
         this.tasker = tasker
         this.pps = 0
     }
+    /**
+     * authenticate with pixelplaceio websocket using ```Client.userJson```
+     * 
+     * @returns {Promise} promise, resolved when user is authenticated
+     */
     init() {
         return new Promise((resolve, reject) => {
             var client = new WebSocketClient()
@@ -71,14 +85,23 @@ class Client {
     }
 }
 
-// TODO: fix bots not authenticating right
 class Bot {
+    /**
+     * construct new bot
+     * 
+     * @param {WebSocket} connection websocket connection
+     * @param {Number} id bot id
+     * @param {TaskManager} tasker taskmanager
+     */
     constructor(connection, id, tasker) {
         this.connection = connection
         this.id = id
         this.tasker = tasker
         this.pps = 0
     }
+    /**
+     * initialize bot event handlers
+     */
     init() {
         try {
             this.connection.on('message', (msg) => {
@@ -115,6 +138,12 @@ class Bot {
             console.error(`you just got skill issued by: ${e}`)
         }
     }
+
+    /**
+     * kill bot with reason ```reason```
+     * 
+     * @param {String} reason reason
+     */
     abort(reason) {
         console.error(`${this.id}: ABORTING: ${reason}`)
                 
@@ -125,12 +154,23 @@ class Bot {
         }
         this.connection.close()
     }
+
+    /**
+     * send p (place) message to bot's ws connection
+     * 
+     * @param {Array} pixel pixel to place
+     */
     tick(pixel) {
         this.connection.sendUTF(place(pixel[0], pixel[1], pixel[2]))
         this.pps += 1
         // console.log(place(pixel[0], pixel[1], pixel[2]))
     }
-    // courtesy of 0vC4
+    /**
+     * generate response to ```ping.alive```
+     * 
+     * courtesy of 0vC4
+     * @returns {String} string that is right response to ```ping.alive```
+     */
     pongAlive = () => {
         const {random} = Math;
         const word = 'gmbozcfxta';
