@@ -5,19 +5,17 @@ const Client = require('./pixelplace-bot/bot.js')
 const TaskManager = require('./pixelplace-bot/tasker.js')
 const Server = require('./pixelplace-bot/server.js')
 
-const login = new LoginManager(users)
-const task = new TaskManager()
-const server = new Server(task)
+const login = new LoginManager(users);
+const task = new TaskManager();
+const server = new Server(task);
 
-server.init()
+server.init();
 
 // TODO: finish lamnidae-extension gui
 
-const sleep = ms => new Promise( res => setTimeout(res, ms));
-
 (async () => {
     console.log(`Initializing on ${boardId}`)
-    await task.init(boardId)
+    // await task.init(boardId)
     // task.grief(1731, 500, 2030, 799, 20)
     // var len = task.canvas.length - 1
     // console.log(task.canvas[len][task.canvas[len].length - 1][1])
@@ -65,9 +63,10 @@ const sleep = ms => new Promise( res => setTimeout(res, ms));
 
 task.on('ready', async () => {
     console.log('all systems are go!')
-    // await task.parseImage('test.png')
+    await task.parseImage('tebst.png')
+    .catch(reason => {console.error(`could not read image with error: ${reason}`)})
     // task.place(723, 140)
     // task.place(2800, 0)
-    await task.qrCode(866, 518, 'sussy baka', '1')
+    // await task.qrCode(800, 250, 'https://www.thisworldthesedays.com/real162.html')
     task.ticker()
 })

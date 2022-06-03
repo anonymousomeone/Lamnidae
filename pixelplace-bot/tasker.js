@@ -71,8 +71,10 @@ class TaskManager extends EventEmitter {
     parseImage(img) {
         console.log(`Processing ${img}`)
         var date = Date.now()
-        return new Promise(async (resolve, reject) => {
-            await Jimp.read(img, (err, image) => {
+        return new Promise((resolve, reject) => {
+            Jimp.read(img, (err, image) => {
+                if (image == undefined) return reject(err.code)
+                
                 var arr = []
                 var res = []
                 image.scan(0, 0, image.bitmap.width, image.bitmap.height, function(x, y, idx) {
