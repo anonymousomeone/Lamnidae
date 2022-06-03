@@ -48,7 +48,7 @@ class Server {
 
     parseMessage(msg) {
         var command = msg.split(' ')[0]
-        var args = msg.slice(command.length)
+        var args = msg.slice(command.length).split(' ')
 
         console.log(command + ' / ' + args)
     }

@@ -9,6 +9,12 @@ class LoginManager {
         this.users = users
     }
 
+    /**
+     * get authId/stuff of user
+     * 
+     * @param {Object} user object with ```password``` and ```email``` properties
+     * @returns {Object} object with auth things (if logged in successfully)
+     */
     async login(user) {
         try {
             console.log(`trying to login as: ${user.name}`)
@@ -66,7 +72,6 @@ class LoginManager {
                 } else if (data.cookies[i].name == 'authKey') {
                     user.authKey = data.cookies[i].value
                 }
-                user.time = Date.now()
             }
             const client = await page.target().createCDPSession();
             await client.send('Network.clearBrowserCookies');
@@ -82,6 +87,11 @@ class LoginManager {
         }
     }
     
+    /**
+     * log in to ```LoginManager.users```
+     * 
+     * @returns {Array} array of logged in users
+     */
     async start() {
         var toLogin = []
         var loggedin = []
@@ -143,6 +153,13 @@ class LoginManager {
 }
     sleep = ms => new Promise( res => setTimeout(res, ms));
 
+    /**
+     * make a request to pixelplace.io/api/get-painting.php
+     * and refresh auth thingies or something
+     * 
+     * @param {Object} user object with authId, authToken, and authKey properties
+     * @returns {Promise} resolved when request completed with request headers and data
+     */
     join(user) {
         return new Promise((resolve, reject) => {
             const options = {
@@ -173,6 +190,12 @@ class LoginManager {
               req.end();
         })
     }
+    /**
+     * build cookie payload for get-painting.php
+     * 
+     * @param {Object} user object with authId, authKey, and authToken properties
+     * @returns correct cookie payload for api request to get-painting.php
+     */
     buildCookie(user) {
         return `authId=${user.authId}; authKey=${user.authKey}; authToken=${user.authToken}`
     }

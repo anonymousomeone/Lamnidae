@@ -31,6 +31,11 @@ class TaskManager extends EventEmitter {
     core functions ===========================================================================
                    ===========================================================================
     */ 
+   /**
+    * loads pixelplace canvas into local canvas array
+    * 
+    * @param {Number} id id of canvas
+    */
     async init(id) {
         console.log('Processing canvas')
         var ms = Date.now()
@@ -57,6 +62,12 @@ class TaskManager extends EventEmitter {
         // format: canvas[y][x]
     }
     
+    /**
+     * parse a image
+     * 
+     * @param {String} img file path of img to parse
+     * @returns {void}
+     */
     parseImage(img) {
         console.log(`Processing ${img}`)
         var date = Date.now()
@@ -88,9 +99,12 @@ class TaskManager extends EventEmitter {
         // console.log('converting image')
     }
     
+    /**
+     * start the setInterval
+     */
     ticker() {
         console.log(`TASKER: drawing with ${this.bots.length} bots`)
-        setInterval(() => {
+        this.interval = setInterval(() => {
             if (this.bots.length <= 0) {
                 console.error('TASKER: no bots?\ninsert megamind meme here')
                 // process.exit(1)
@@ -113,16 +127,46 @@ class TaskManager extends EventEmitter {
         }, this.wait)
     }
 
+    /**
+     * set new speed
+     * 
+     * @param {Number} spd delay between ticks (in ms), every bot will try to go at this speed
+     */
+    setSpeed(spd) {
+        this.wait = spd
+        clearInterval(this.interval)
+        this.ticker()
+    }
+
+    /**
+     * check if a pixel already is the same color on the canvas
+     * 
+     * @param {Array} rgb array of rgb value [r, g, b]
+     * @param {Number} x x pos
+     * @param {Number} y y pos
+     * @returns 
+     */
     check(rgb, x, y) {
         return rgb.every((val, index) => val === findColor(this.canvas[y][x][2])[index]) || this.canvas[y][x][2].every((val, index) => val === [204, 204, 204][index])
     }
 
-    // check if pixel is background
+    /**
+     * check if a pixel is background
+     * 
+     * @param {Number} x x pos
+     * @param {Number} y y pos
+     * @returns {Boolean} true/false if pixel is background
+     */
     background(x, y) {
         return this.canvas[y][x][2].every((val, index) => val === [204, 204, 204][index])
     }
 
-    
+    /**
+     * checks if p message isnt the right color
+     * 
+     * @param {Array} msg singular p message
+     * @returns {void}
+     */
     pHandler(msg) {
         if (this.maintain[0] == undefined) return
         if (this.maintain[0][0] == undefined) return
@@ -144,6 +188,12 @@ class TaskManager extends EventEmitter {
         }
     }
 
+    /**
+     * converts image in maintain array to tasks
+     * 
+     * @param {Number} x 
+     * @param {Number} y 
+     */
     place(x, y) {
         this.x = x
         this.y = y
@@ -181,25 +231,15 @@ class TaskManager extends EventEmitter {
                    ===========================================================================
     */ 
     
-    grief(x, y, x2, y2, c) {
-        this.griefing = true
-        this.x = x
-        this.y = y
-        // why do math, when you can have the code do it for you?
-        this.w = x2 - x
-        this.h = y2 - y
-        this.color = c
-    }
-
     /**
      * check if pixel is within ```w``` pixels of a [204, 204, 204] pixel
      * 
      * for Pallete (0vC4#7152) :)
      * 
      * help my balls have rusted shut due to logic
-     * @param {Integer} x 
-     * @param {Integer} y 
-     * @param {Integer} w width
+     * @param {Number} x 
+     * @param {Number} y 
+     * @param {Number} w width
      * @returns {Boolean} true/false
      */
     border(x, y, w) {
@@ -268,7 +308,15 @@ class TaskManager extends EventEmitter {
         }
     }
 
-    // like draw border, but rainbow!!!
+    /**
+     * like draw border, but rainbow!!!
+     * 
+     * @param {Number} x 
+     * @param {Number} y 
+     * @param {Number} x2 second x coordinate - no need for width/height calculation
+     * @param {Number} y2 
+     * @param {Number} b size of area to check e.g 1 == 1x1, 2 == 2x2 etc
+     */
     rainbowDrawBorder(x, y, x2, y2, b) {
         var w = x2 - x
         var h = y2 - y
@@ -289,11 +337,20 @@ class TaskManager extends EventEmitter {
         }
     }
 
-    async qrCode(x, y, text, scale='4') {
+    /**
+     * generate a qr code with value ```text``` and add it to task queue
+     * 
+     * @param {Integer} x 
+     * @param {Integer} y 
+     * @param {String} text 
+     * @param {String} scale 
+     * @param {String} margin 
+     * @param {String} errorCorrectionLevel 
+     */
+    async qrCode(x, y, text, scale='4', margin='1', errorCorrectionLevel='H') {
         const canvas = createCanvas(1, 1)
 
-        const opts = { errorCorrectionLevel: 'H', margin: '1', scale: scale}
-        const cv = await QRCode.toCanvas(canvas, text, opts)
+        const cv = await QRCode.toCanvas(canvas, text, {scale: scale, margin: margin, errorCorrectionLevel: errorCorrectionLevel})
         const context = cv.getContext('2d')
         
         const data = context.getImageData(0, 0, cv.width, cv.height);
@@ -370,22 +427,6 @@ function rgb2lab(rgb){
     y = (y > 0.008856) ? Math.pow(y, 1/3) : (7.787 * y) + 16/116;
     z = (z > 0.008856) ? Math.pow(z, 1/3) : (7.787 * z) + 16/116;
     return [(116 * y) - 16, 500 * (x - y), 200 * (y - z)]
-}
-
-function parseMessage(msg) {
-    var id = ""
-    for (var i = 0; i < msg.length; i++) {
-        var char = msg[i]
-        // console.log(parseInt(char))
-        if (parseInt(char).toString() == 'NaN') break
-        id += char
-    }
-    if (msg.length >= 3) var message = JSON.parse(msg.slice(id.length));
-    if (id == '42') {
-        var type = message[0]
-        message = message[1]
-    }
-    return { id: id, type: type, msg: message }
 }
 
 function sliceIntoChunks(arr, chunkSize) {
