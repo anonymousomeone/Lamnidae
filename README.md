@@ -4,8 +4,8 @@ cope
 # autohotkey based bots have skill issue
 seethe
 
-# my ap cs project
-cry about it
+# new gui extension (real)
+[GUI tampermonkey extension](https://github.com/anonymousomeone/Lamnidae-extension)
 
 # prereq
 - have [nodejs](https://nodejs.org/en/download/) and npm installed
