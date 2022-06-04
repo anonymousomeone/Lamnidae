@@ -15,7 +15,7 @@ server.init();
 
 (async () => {
     console.log(`Initializing on ${boardId}`)
-    // await task.init(boardId)
+    await task.init(boardId)
     // task.grief(1731, 500, 2030, 799, 20)
     // var len = task.canvas.length - 1
     // console.log(task.canvas[len][task.canvas[len].length - 1][1])
@@ -29,7 +29,7 @@ server.init();
     // task.place(2800, 0)
     var users = await login.start()
     if (users.length == 0) {console.error('no bots (skill issue)'); process.exit(1)}
-    task.wait = 25 // delay between ticks
+    task.wait = 23 // delay between ticks
     for (var i = 0; i < users.length; i++) {
         var client = new Client(users[i], i, boardId, task)
         
@@ -63,9 +63,9 @@ server.init();
 
 task.on('ready', async () => {
     console.log('all systems are go!')
-    await task.parseImage('tebst.png')
+    await task.parseImage('test.png')
     .catch(reason => {console.error(`could not read image with error: ${reason}`)})
-    // task.place(723, 140)
+    task.place(723, 140)
     // task.place(2800, 0)
     // await task.qrCode(800, 250, 'https://www.thisworldthesedays.com/real162.html')
     task.ticker()
